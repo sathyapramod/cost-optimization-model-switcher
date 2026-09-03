@@ -11,12 +11,14 @@ export {
   resolveContextBand,
 } from "./estimate.js";
 export {
-  buildRationale,
+  buildDowngradeRationale,
   buildScopedIngestPlan,
+  buildUpgradeRationale,
   classifyTask,
   defaultModelId,
   inferPrimarySource,
-  pickRecommendedModel,
+  needsOpusUpgrade,
+  pickDowngradeModel,
   summarizeTask,
 } from "./classify.js";
 export { SUGGEST_MODEL_SWITCH_TOOL, handleSuggestModelSwitch } from "./tool-schema.js";
@@ -29,6 +31,7 @@ export type {
   GateDecision,
   GateInput,
   ModelTier,
+  SwitchDirection,
   SuggestModelSwitchInput,
   SuggestModelSwitchResult,
   TaskClass,

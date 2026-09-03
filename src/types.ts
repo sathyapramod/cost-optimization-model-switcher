@@ -18,6 +18,8 @@ export type Confidence = "low" | "medium" | "high";
 
 export type GateAction = "proceed" | "suggest_switch";
 
+export type SwitchDirection = "downgrade" | "upgrade";
+
 export interface ContextProbe {
   source: ContextSource;
   refs?: string[];
@@ -37,14 +39,17 @@ export interface GateInput {
   userOptedOut?: boolean;
   /** User explicitly chose Opus in the last few turns */
   userChoseOpus?: boolean;
+  /** User explicitly chose Haiku/Sonnet in the last few turns */
+  userChoseCheapModel?: boolean;
   /** Host allows auto-switch without confirmation */
   autoSwitchEnabled?: boolean;
 }
 
 export interface SuggestModelSwitchInput {
   current_model: string;
-  recommended_model: Exclude<ModelTier, "opus">;
+  recommended_model: ModelTier;
   recommended_model_id?: string;
+  switch_direction: SwitchDirection;
   task_summary: string;
   task_class: TaskClass;
   context_source: ContextSource;

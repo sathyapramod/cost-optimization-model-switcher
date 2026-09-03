@@ -34,7 +34,7 @@ describe("evaluateGate", () => {
     assert.match(decision.reason, /complex/);
   });
 
-  it("skips gate when not on opus", () => {
+  it("skips gate when not on opus for straightforward tasks", () => {
     const decision = evaluateGate({
       currentModel: "claude-sonnet-4-6",
       userMessage: "Summarize this log",
@@ -42,7 +42,30 @@ describe("evaluateGate", () => {
     });
 
     assert.equal(decision.action, "proceed");
-    assert.match(decision.reason, /already on sonnet/);
+    assert.match(decision.reason, /straightforward on sonnet/);
+  });
+
+  it("suggests opus upgrade on haiku for complex tasks", () => {
+    const decision = evaluateGate({
+      currentModel: "claude-haiku-4-5",
+      userMessage: "Design auth migration from this database dump",
+      probes: [{ source: "database_dump", bytes: 500_000 }],
+    });
+
+    assert.equal(decision.action, "suggest_switch");
+    assert.equal(decision.suggestSwitch?.recommended_model, "opus");
+    assert.equal(decision.suggestSwitch?.switch_direction, "upgrade");
+  });
+
+  it("suggests opus upgrade on sonnet for deep complex tasks", () => {
+    const decision = evaluateGate({
+      currentModel: "claude-sonnet-4-6",
+      userMessage: "Architect multi-service migration from this dump",
+      probes: [{ source: "database_dump", bytes: 200_000 }],
+    });
+
+    assert.equal(decision.action, "suggest_switch");
+    assert.equal(decision.suggestSwitch?.recommended_model, "opus");
   });
 
   it("respects user opt-out", () => {

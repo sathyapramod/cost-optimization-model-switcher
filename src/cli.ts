@@ -47,6 +47,7 @@ const { values, positionals } = parseArgs({
     probe: { type: "string", multiple: true },
     "opt-out": { type: "boolean", default: false },
     "chose-opus": { type: "boolean", default: false },
+    "chose-cheap": { type: "boolean", default: false },
     "auto-switch": { type: "boolean", default: false },
     json: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
@@ -87,6 +88,7 @@ const decision = evaluateGate({
   probes,
   userOptedOut: values["opt-out"],
   userChoseOpus: values["chose-opus"],
+  userChoseCheapModel: values["chose-cheap"],
   autoSwitchEnabled: values["auto-switch"],
 });
 

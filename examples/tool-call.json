@@ -3,6 +3,7 @@
   "input": {
     "current_model": "claude-opus-4-6",
     "recommended_model": "sonnet",
+    "switch_direction": "downgrade",
     "recommended_model_id": "claude-sonnet-4-6",
     "task_summary": "Review PR #482 diff and list potential bugs",
     "task_class": "straightforward",

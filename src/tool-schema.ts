@@ -44,11 +44,14 @@ export async function handleSuggestModelSwitch(
   input: SuggestModelSwitchInput,
   options: ModelSwitchHandlerOptions = {},
 ): Promise<SuggestModelSwitchResult> {
-  if (input.task_class !== "straightforward") {
+  const mismatch =
+    (input.switch_direction === "downgrade" && input.task_class !== "straightforward") ||
+    (input.switch_direction === "upgrade" && input.task_class !== "complex");
+  if (mismatch) {
     return {
       status: "declined",
       switched_to: null,
-      message: "Model switch declined: task classified as complex.",
+      message: `Model switch declined: ${input.switch_direction} incompatible with task_class=${input.task_class}.`,
     };
   }
 

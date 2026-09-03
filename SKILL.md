@@ -2,13 +2,12 @@
 name: cost-optimization-model-switcher
 description: >
   Inspects tasks that pull large external context (GitHub PRs, Jira boards,
-  log files, database dumps) and recommends switching off Opus to Sonnet or
-  Haiku when the work is straightforward (summarize, format, review diffs,
-  extract bugs, triage, classify). Use on every turn when external platform
-  context is involved, when the user pastes or attaches large files, or when
-  the user mentions cost, tokens, or model choice. Do NOT use for small
-  inline snippets, single-file edits, or tasks that require deep multi-step
-  reasoning, architecture design, or novel code generation.
+  log files, database dumps) and recommends model switches when the current
+  tier is a poor fit: downgrade Opus to Sonnet/Haiku for straightforward bulk
+  work, or upgrade Haiku/Sonnet to Opus for complex architecture, debugging,
+  and implementation tasks. Use on every turn when external platform context
+  is involved, when the user pastes or attaches large files, or when the user
+  mentions cost, tokens, or model choice.
 allowed-tools:
   - suggest_model_switch
   - AskUserQuestion
@@ -26,12 +25,17 @@ compatibility: claude-code
 
 # Cost Optimization & Model Switcher
 
-You are a cost gatekeeper. Before ingesting large external context on an
-expensive model, estimate whether a cheaper model can do the job. **Stop and
-switch first; do not silently burn Opus tokens on bulk-ingest + simple output.**
+You are a model-tier gatekeeper. Match the model to the task **before** ingesting
+large context or starting deep work:
 
-Programmatic gate logic lives in this repo: `src/gate.ts` (`evaluateGate`).
-Hosts register `schemas/suggest_model_switch.json` as a client tool.
+- **Downgrade:** Opus + large context + straightforward task → Sonnet/Haiku
+- **Upgrade:** Haiku/Sonnet + complex task needing deep reasoning → Opus
+
+**Stop and switch first;** do not silently burn Opus on bulk-ingest simple output,
+and do not strand complex work on Haiku/Sonnet when Opus is needed.
+
+Programmatic gate logic: `src/gate.ts` (`evaluateGate`). Tool schema:
+`schemas/suggest_model_switch.json`.
 
 ## Persistence
 
@@ -51,7 +55,43 @@ from the user's last explicit model choice or system context. Normalize to one o
 | **sonnet** | `claude-sonnet-*`, `sonnet` |
 | **haiku** | `claude-haiku-*`, `haiku` |
 
-If not on **opus**, skip the gate — cheaper tiers are already selected.
+If not on **opus**, continue to Step 1b (upgrade check) instead of skipping.
+
+## Step 1b — Upgrade check (Haiku / Sonnet)
+
+When current model is **haiku** or **sonnet**, evaluate whether the task needs Opus.
+
+### Upgrade when
+
+| Current | Task | Context | Action |
+|---------|------|---------|--------|
+| **haiku** | **complex** | any | **Must upgrade** → Opus |
+| **sonnet** | **complex** | medium/large | **Upgrade** → Opus |
+| **sonnet** | **complex** + deep signals | any | **Upgrade** → Opus |
+
+**Deep signals:** architecture, migration, multi-service, security audit, exploit analysis.
+
+### Stay on current tier when
+
+- Task is **straightforward** (cheap model is correct)
+- **sonnet** + **complex** but **small** context and no deep signals (Sonnet can handle)
+- User said "stay on haiku/sonnet" / `userChoseCheapModel`
+
+### Upgrade execution
+
+Same as Step 4 below, but call `suggest_model_switch` with:
+- `switch_direction: "upgrade"`
+- `recommended_model: "opus"`
+- `task_class: "complex"`
+
+Fallback prompt:
+
+```
+This task needs deeper reasoning than [haiku|sonnet] provides ([summary]).
+Switch to Opus and continue?
+
+Options: Switch and continue | Stay on current model | Cancel
+```
 
 ## Step 1 — Estimate incoming context (tokens)
 
@@ -158,7 +198,8 @@ When **all** are true:
 
 ### Primary path — call `suggest_model_switch`
 
-Call the tool with structured rationale. Schema: `schemas/suggest_model_switch.json`.
+Call the tool with structured rationale. Set `switch_direction` to `downgrade`
+or `upgrade`. Schema: `schemas/suggest_model_switch.json`.
 The host shows a confirmation UI or auto-switches per user preference.
 
 ### Fallback — `AskUserQuestion`
@@ -197,4 +238,6 @@ Log internally (in your reply, one line max):
 | "Review PR #482 diff, list bugs" | 1.2k lines changed | straightforward | → sonnet |
 | "Design auth migration from this dump" | large | complex | stay opus |
 | "Extract all P0 Jira tickets this sprint" | 45 issues | straightforward | → haiku |
-| "Fix the race condition in PR #12" | medium | complex | stay opus |
+| "Fix the race condition in PR #12" | medium | complex | stay opus (or upgrade if on haiku) |
+| "Design auth migration" on haiku | any | complex | **upgrade→opus** |
+| "Summarize log" on sonnet | large | straightforward | proceed (already cheap) |

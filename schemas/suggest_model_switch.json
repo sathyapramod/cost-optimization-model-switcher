@@ -1,6 +1,6 @@
 {
   "name": "suggest_model_switch",
-  "description": "Recommend switching the active Claude model before ingesting large external context for a straightforward task. The host should present a confirmation UI or perform an automatic swap per user settings. Call this INSTEAD of proceeding on Opus when the cost gate triggers.",
+  "description": "Recommend switching the active Claude model when the current tier is a poor fit: downgrade Opus for large straightforward tasks, or upgrade Haiku/Sonnet for complex tasks that need deeper reasoning. The host should present a confirmation UI or perform an automatic swap per user settings.",
   "input_schema": {
     "type": "object",
     "additionalProperties": false,
@@ -11,8 +11,13 @@
       },
       "recommended_model": {
         "type": "string",
-        "enum": ["sonnet", "haiku"],
-        "description": "Cheaper model tier that fits the task."
+        "enum": ["opus", "sonnet", "haiku"],
+        "description": "Target model tier."
+      },
+      "switch_direction": {
+        "type": "string",
+        "enum": ["downgrade", "upgrade"],
+        "description": "downgrade = Opus→cheaper; upgrade = Haiku/Sonnet→Opus (or Sonnet for light upgrades)."
       },
       "recommended_model_id": {
         "type": "string",
@@ -26,7 +31,7 @@
       "task_class": {
         "type": "string",
         "enum": ["straightforward", "complex"],
-        "description": "Classification result. Only call this tool when straightforward."
+        "description": "Classification result. straightforward for downgrade; complex for upgrade."
       },
       "context_source": {
         "type": "string",
@@ -66,7 +71,7 @@
       "rationale": {
         "type": "string",
         "maxLength": 1000,
-        "description": "Brief explanation for the user: why cheaper model is sufficient."
+        "description": "Brief explanation for the user: why the switch helps (cost savings or capability)."
       },
       "scoped_ingest_plan": {
         "type": "string",
@@ -87,6 +92,7 @@
     "required": [
       "current_model",
       "recommended_model",
+      "switch_direction",
       "task_summary",
       "task_class",
       "context_source",

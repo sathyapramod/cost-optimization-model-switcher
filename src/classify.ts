@@ -1,4 +1,4 @@
-import type { ContextSource, ModelTier, TaskClass } from "./types.js";
+import type { ContextBand, ContextSource, ModelTier, TaskClass } from "./types.js";
 
 const STRAIGHTFORWARD_PATTERNS = [
   /\bsummari[sz]e\b/i,
@@ -67,7 +67,16 @@ export function inferPrimarySource(probes: { source: ContextSource }[]): Context
   return probes[0]!.source;
 }
 
-export function pickRecommendedModel(
+export function needsOpusUpgrade(userMessage: string, band: ContextBand): boolean {
+  const text = userMessage.toLowerCase();
+  const deep =
+    /\barchitect(ure)?\b|\bmigrat(e|ion)\b|\bsecurity audit\b|\bexploit\b|\bmulti[- ]service\b/.test(
+      text,
+    );
+  return deep || band !== "small";
+}
+
+export function pickDowngradeModel(
   userMessage: string,
   source: ContextSource,
 ): Exclude<ModelTier, "opus"> {
@@ -82,7 +91,8 @@ export function pickRecommendedModel(
   return "haiku";
 }
 
-export function defaultModelId(tier: Exclude<ModelTier, "opus">): string {
+export function defaultModelId(tier: ModelTier): string {
+  if (tier === "opus") return "claude-opus-4-6";
   if (tier === "sonnet") return "claude-sonnet-4-6";
   return "claude-haiku-4-5";
 }
@@ -112,7 +122,7 @@ export function buildScopedIngestPlan(source: ContextSource, refs: string[] = []
   }
 }
 
-export function buildRationale(
+export function buildDowngradeRationale(
   recommended: Exclude<ModelTier, "opus">,
   tokens: number,
   taskClass: TaskClass,
@@ -121,5 +131,15 @@ export function buildRationale(
   return (
     `${taskClass} task over ~${Math.round(tokens / 1000)}k input tokens; ${recommended} typically ` +
     `handles this at ~${savings} lower input cost than Opus.`
+  );
+}
+
+export function buildUpgradeRationale(
+  current: Exclude<ModelTier, "opus">,
+  tokens: number,
+): string {
+  return (
+    `Complex task on ${current} over ~${Math.round(tokens / 1000)}k input tokens; Opus provides ` +
+    `deeper multi-step reasoning for architecture, debugging, and implementation work.`
   );
 }
