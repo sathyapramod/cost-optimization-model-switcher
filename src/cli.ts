@@ -1,0 +1,105 @@
+#!/usr/bin/env node
+import { parseArgs } from "node:util";
+import { evaluateGate } from "./gate.js";
+import type { ContextProbe, ContextSource } from "./types.js";
+
+function parseProbe(raw: string): ContextProbe {
+  const [kind, ...rest] = raw.split(":");
+  const value = rest.join(":");
+  const source = kind as ContextSource;
+
+  switch (source) {
+    case "github_pr": {
+      const [additions, deletions, changedFiles, ...refs] = value.split(",");
+      return {
+        source,
+        additions: Number(additions),
+        deletions: Number(deletions),
+        changedFiles: Number(changedFiles),
+        refs: refs.length ? refs : undefined,
+      };
+    }
+    case "jira": {
+      const count = Number(value);
+      return { source, issueCount: Number.isFinite(count) ? count : 0 };
+    }
+    case "log_file":
+    case "database_dump":
+    case "csv_export":
+    case "json_export":
+    case "paste": {
+      const [bytes, lines] = value.split(",");
+      return {
+        source,
+        bytes: bytes ? Number(bytes) : undefined,
+        lines: lines ? Number(lines) : undefined,
+      };
+    }
+    default:
+      return { source: "other", refs: value ? [value] : undefined };
+  }
+}
+
+const { values, positionals } = parseArgs({
+  allowPositionals: true,
+  options: {
+    model: { type: "string", default: "claude-opus-4-6" },
+    probe: { type: "string", multiple: true },
+    "opt-out": { type: "boolean", default: false },
+    "chose-opus": { type: "boolean", default: false },
+    "auto-switch": { type: "boolean", default: false },
+    json: { type: "boolean", default: false },
+    help: { type: "boolean", short: "h", default: false },
+  },
+});
+
+if (values.help) {
+  console.log(`Usage: cost-gate [options] "user message"
+
+Options:
+  --model <id>         Current model (default: claude-opus-4-6)
+  --probe <spec>       Repeatable context probe (see README)
+  --opt-out            User disabled model switching
+  --chose-opus         User explicitly chose Opus
+  --auto-switch        Host auto-switch enabled
+  --json               JSON output
+  -h, --help           Show help
+
+Probe formats:
+  github_pr:<additions>,<deletions>,<changedFiles>[,ref...]
+  jira:<issueCount>
+  log_file:<bytes>[,<lines>]
+  database_dump:<bytes>[,<lines>]
+`);
+  process.exit(0);
+}
+
+const message = positionals.join(" ").trim();
+if (!message) {
+  console.error("error: user message required");
+  process.exit(1);
+}
+
+const probes = (values.probe ?? []).map(parseProbe);
+const decision = evaluateGate({
+  currentModel: values.model!,
+  userMessage: message,
+  probes,
+  userOptedOut: values["opt-out"],
+  userChoseOpus: values["chose-opus"],
+  autoSwitchEnabled: values["auto-switch"],
+});
+
+if (values.json) {
+  console.log(JSON.stringify(decision, null, 2));
+} else {
+  console.log(decision.reason);
+  if (decision.suggestSwitch) {
+    console.log(
+      `recommended: ${decision.suggestSwitch.recommended_model_id} (${decision.suggestSwitch.confidence} confidence)`,
+    );
+    console.log(decision.suggestSwitch.rationale);
+  }
+}
+
+process.exit(decision.action === "suggest_switch" ? 2 : 0);

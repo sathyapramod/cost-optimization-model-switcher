@@ -1,0 +1,48 @@
+{
+  "name": "cost-optimization-model-switcher",
+  "version": "1.0.0",
+  "description": "Cost gate for Claude: detect Opus overuse on large-context straightforward tasks and suggest Sonnet/Haiku",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/tool-schema.d.ts",
+      "import": "./dist/tool-schema.js"
+    }
+  },
+  "bin": {
+    "cost-gate": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "SKILL.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "gate": "node dist/cli.js",
+    "proxy": "node dist/proxy.js",
+    "validate-skill": "node scripts/validate-skill.mjs"
+  },
+  "keywords": [
+    "claude",
+    "anthropic",
+    "cost-optimization",
+    "model-switching",
+    "agent-skills"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "status": "accepted",
+  "switched_to": "claude-sonnet-4-6",
+  "message": "Model switched. Continue with scoped ingest."
+}

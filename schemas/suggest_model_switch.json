@@ -1,0 +1,98 @@
+{
+  "name": "suggest_model_switch",
+  "description": "Recommend switching the active Claude model before ingesting large external context for a straightforward task. The host should present a confirmation UI or perform an automatic swap per user settings. Call this INSTEAD of proceeding on Opus when the cost gate triggers.",
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "current_model": {
+        "type": "string",
+        "description": "Active model identifier, e.g. claude-opus-4-6 or opus."
+      },
+      "recommended_model": {
+        "type": "string",
+        "enum": ["sonnet", "haiku"],
+        "description": "Cheaper model tier that fits the task."
+      },
+      "recommended_model_id": {
+        "type": "string",
+        "description": "Concrete model slug for the host to apply, e.g. claude-sonnet-4-6 or claude-haiku-4-5. Omit to let the host map tier to default."
+      },
+      "task_summary": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "One-line description of what the user asked for."
+      },
+      "task_class": {
+        "type": "string",
+        "enum": ["straightforward", "complex"],
+        "description": "Classification result. Only call this tool when straightforward."
+      },
+      "context_source": {
+        "type": "string",
+        "enum": [
+          "github_pr",
+          "jira",
+          "log_file",
+          "database_dump",
+          "csv_export",
+          "json_export",
+          "paste",
+          "other"
+        ],
+        "description": "Primary external context type."
+      },
+      "context_refs": {
+        "type": "array",
+        "items": { "type": "string" },
+        "maxItems": 20,
+        "description": "URLs, file paths, PR numbers, Jira keys, etc."
+      },
+      "estimated_input_tokens": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Estimated tokens to ingest before any summarization."
+      },
+      "context_band": {
+        "type": "string",
+        "enum": ["small", "medium", "large"],
+        "description": "Threshold band from the skill heuristics."
+      },
+      "confidence": {
+        "type": "string",
+        "enum": ["low", "medium", "high"],
+        "description": "Confidence in the switch recommendation."
+      },
+      "rationale": {
+        "type": "string",
+        "maxLength": 1000,
+        "description": "Brief explanation for the user: why cheaper model is sufficient."
+      },
+      "scoped_ingest_plan": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "How to fetch less context after switch, e.g. grep errors only, PR files matching src/."
+      },
+      "auto_switch": {
+        "type": "boolean",
+        "default": false,
+        "description": "If true, host may switch without prompt when user has opted into auto-switch."
+      },
+      "preserve_context": {
+        "type": "boolean",
+        "default": true,
+        "description": "If true, host should carry user message and gate metadata into the new session."
+      }
+    },
+    "required": [
+      "current_model",
+      "recommended_model",
+      "task_summary",
+      "task_class",
+      "context_source",
+      "estimated_input_tokens",
+      "context_band",
+      "rationale"
+    ]
+  }
+}
