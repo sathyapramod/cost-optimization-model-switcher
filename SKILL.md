@@ -44,32 +44,45 @@ full PR diffs, Jira exports, log tails, or DB dumps — use metadata/size probes
 first. Off only when the user says "stay on opus", "no model switch", or
 "disable cost optimizer".
 
-## Step 0 — Detect current model
+## Step 0 — Detect current model (any provider)
 
-Read `current_model` from session metadata if the host injects it. Otherwise infer
-from the user's last explicit model choice or system context. Normalize to one of:
+Read `current_model` and `provider` from session metadata if the host injects them.
+Resolve to a **capability tier** using `catalogs/default.json` or host catalog:
 
-| Tier | Aliases |
-|------|---------|
-| **opus** | `claude-opus-*`, `opus` |
-| **sonnet** | `claude-sonnet-*`, `sonnet` |
-| **haiku** | `claude-haiku-*`, `haiku` |
+| Capability tier | Anthropic | OpenAI | Cursor (defaults) |
+|-----------------|-----------|--------|-------------------|
+| **premium** | Opus | o3, o1 | claude-opus-4-6 |
+| **balanced** | Sonnet | gpt-4o | claude-sonnet-4-6 |
+| **fast** | Haiku | gpt-4o-mini | gpt-4o-mini |
 
-If not on **opus**, continue to Step 1b (upgrade check) instead of skipping.
+If the model is unknown, skip the gate and ask the user to add it to the catalog.
+
+For Cursor sessions using OpenAI-backed models, pass `provider: "cursor"` when IDs are ambiguous.
+
+## Step 0b — Legacy Anthropic names
+
+Opus/Sonnet/Haiku map to premium/balanced/fast. Prefer capability tiers in tool calls.
 
 ## Step 1b — Upgrade check (Haiku / Sonnet)
 
-When current model is **haiku** or **sonnet**, evaluate whether the task needs Opus.
+When current model is **fast (Haiku)** or **balanced (Sonnet)**, evaluate upgrade target.
 
-### Upgrade when
+### Haiku upgrade ladder (complex tasks)
 
-| Current | Task | Context | Action |
-|---------|------|---------|--------|
-| **haiku** | **complex** | any | **Must upgrade** → Opus |
-| **sonnet** | **complex** | medium/large | **Upgrade** → Opus |
-| **sonnet** | **complex** + deep signals | any | **Upgrade** → Opus |
+| Task shape | Context | Target |
+|------------|---------|--------|
+| implement, fix, refactor, debug, write tests | small, no deep signals | **balanced (Sonnet)** |
+| architect, migration, multi-service, security audit | any | **premium (Opus)** |
+| any complex | medium/large | **premium (Opus)** |
 
 **Deep signals:** architecture, migration, multi-service, security audit, exploit analysis.
+
+### Sonnet upgrade
+
+| Task | Context | Action |
+|------|---------|--------|
+| **complex** | medium/large | **Upgrade** → premium |
+| **complex** + deep signals | any | **Upgrade** → premium |
 
 ### Stay on current tier when
 
@@ -77,21 +90,36 @@ When current model is **haiku** or **sonnet**, evaluate whether the task needs O
 - **sonnet** + **complex** but **small** context and no deep signals (Sonnet can handle)
 - User said "stay on haiku/sonnet" / `userChoseCheapModel`
 
-### Upgrade execution
+### Upgrade execution — MUST prompt user (do not announce in prose only)
 
-Same as Step 4 below, but call `suggest_model_switch` with:
-- `switch_direction: "upgrade"`
-- `recommended_model: "opus"`
-- `task_class: "complex"`
+**STOP all work** (no code, no Jira fetch, no file reads) until the user answers.
 
-Fallback prompt:
+1. Call `suggest_model_switch` with `switch_direction: "upgrade"` and the resolved target tier.
+2. If that tool is unavailable, **MUST** call `AskUserQuestion` with clickable options.
 
+**Haiku + moderate complex (→ Sonnet):**
 ```
-This task needs deeper reasoning than [haiku|sonnet] provides ([summary]).
-Switch to Opus and continue?
+This task needs more reasoning than Haiku provides: [summary].
+Recommended: Sonnet. Opus is available for maximum depth.
 
-Options: Switch and continue | Stay on current model | Cancel
+Options:
+- Switch to Sonnet and continue (recommended)
+- Switch to Opus instead
+- Stay on Haiku
+- Cancel
 ```
+
+**Haiku/Sonnet + deep complex (→ Opus):**
+```
+This task needs premium-tier reasoning: [summary].
+
+Options:
+- Switch to Opus and continue
+- Stay on current model
+- Cancel
+```
+
+**Never** write "Switch to Opus?" as plain text and continue — the user must select an option first.
 
 ## Step 1 — Estimate incoming context (tokens)
 
@@ -239,5 +267,6 @@ Log internally (in your reply, one line max):
 | "Design auth migration from this dump" | large | complex | stay opus |
 | "Extract all P0 Jira tickets this sprint" | 45 issues | straightforward | → haiku |
 | "Fix the race condition in PR #12" | medium | complex | stay opus (or upgrade if on haiku) |
+| "Implement Backstage plugin with tests" on haiku | small | complex | **upgrade→sonnet** |
 | "Design auth migration" on haiku | any | complex | **upgrade→opus** |
 | "Summarize log" on sonnet | large | straightforward | proceed (already cheap) |

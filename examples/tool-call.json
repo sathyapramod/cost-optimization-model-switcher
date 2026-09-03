@@ -1,19 +1,19 @@
 {
   "name": "suggest_model_switch",
   "input": {
-    "current_model": "claude-opus-4-6",
-    "recommended_model": "sonnet",
+    "current_model": "o3",
+    "provider": "openai",
+    "current_capability_tier": "premium",
+    "recommended_capability_tier": "fast",
+    "recommended_model_id": "gpt-4o-mini",
     "switch_direction": "downgrade",
-    "recommended_model_id": "claude-sonnet-4-6",
-    "task_summary": "Review PR #482 diff and list potential bugs",
+    "task_summary": "Summarize this 2MB CI log",
     "task_class": "straightforward",
-    "context_source": "github_pr",
-    "context_refs": ["https://github.com/org/repo/pull/482"],
-    "estimated_input_tokens": 95000,
+    "context_source": "log_file",
+    "estimated_input_tokens": 500000,
     "context_band": "large",
     "confidence": "high",
-    "rationale": "Diff review and bug extraction are pattern-heavy; Sonnet handles multi-file diffs well at ~5–10× lower input cost than Opus.",
-    "scoped_ingest_plan": "Fetch diff stat first; load only changed files relevant to the review scope.",
+    "rationale": "straightforward task over ~500k input tokens; GPT-4o mini typically handles this at ~5–15× lower input cost than o-series / GPT premium.",
     "auto_switch": false,
     "preserve_context": true
   }

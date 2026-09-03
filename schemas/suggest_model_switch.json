@@ -1,27 +1,42 @@
 {
   "name": "suggest_model_switch",
-  "description": "Recommend switching the active Claude model when the current tier is a poor fit: downgrade Opus for large straightforward tasks, or upgrade Haiku/Sonnet for complex tasks that need deeper reasoning. The host should present a confirmation UI or perform an automatic swap per user settings.",
+  "description": "Recommend switching the active model when the current capability tier is a poor fit: downgrade premium models for large straightforward tasks, or upgrade fast/balanced models for complex tasks. Works across Anthropic, OpenAI, and Cursor via provider-neutral capability tiers (premium, balanced, fast).",
   "input_schema": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
       "current_model": {
         "type": "string",
-        "description": "Active model identifier, e.g. claude-opus-4-6 or opus."
+        "description": "Active model identifier as reported by the host."
+      },
+      "provider": {
+        "type": "string",
+        "enum": ["anthropic", "openai", "cursor"],
+        "description": "Model provider for the current session."
+      },
+      "current_capability_tier": {
+        "type": "string",
+        "enum": ["premium", "balanced", "fast"],
+        "description": "Resolved capability tier of the current model."
+      },
+      "recommended_capability_tier": {
+        "type": "string",
+        "enum": ["premium", "balanced", "fast"],
+        "description": "Target capability tier."
+      },
+      "recommended_model_id": {
+        "type": "string",
+        "description": "Concrete model slug for the host to apply, from the provider catalog."
       },
       "recommended_model": {
         "type": "string",
         "enum": ["opus", "sonnet", "haiku"],
-        "description": "Target model tier."
+        "description": "Deprecated Anthropic alias. Prefer recommended_capability_tier."
       },
       "switch_direction": {
         "type": "string",
         "enum": ["downgrade", "upgrade"],
-        "description": "downgrade = Opus→cheaper; upgrade = Haiku/Sonnet→Opus (or Sonnet for light upgrades)."
-      },
-      "recommended_model_id": {
-        "type": "string",
-        "description": "Concrete model slug for the host to apply, e.g. claude-sonnet-4-6 or claude-haiku-4-5. Omit to let the host map tier to default."
+        "description": "downgrade = premium→cheaper; upgrade = fast/balanced→premium."
       },
       "task_summary": {
         "type": "string",
@@ -31,7 +46,7 @@
       "task_class": {
         "type": "string",
         "enum": ["straightforward", "complex"],
-        "description": "Classification result. straightforward for downgrade; complex for upgrade."
+        "description": "straightforward for downgrade; complex for upgrade."
       },
       "context_source": {
         "type": "string",
@@ -71,17 +86,17 @@
       "rationale": {
         "type": "string",
         "maxLength": 1000,
-        "description": "Brief explanation for the user: why the switch helps (cost savings or capability)."
+        "description": "Brief explanation for the user: why the switch helps."
       },
       "scoped_ingest_plan": {
         "type": "string",
         "maxLength": 500,
-        "description": "How to fetch less context after switch, e.g. grep errors only, PR files matching src/."
+        "description": "How to fetch less context after switch."
       },
       "auto_switch": {
         "type": "boolean",
         "default": false,
-        "description": "If true, host may switch without prompt when user has opted into auto-switch."
+        "description": "If true, host may switch without prompt when user has opted in."
       },
       "preserve_context": {
         "type": "boolean",
@@ -91,7 +106,10 @@
     },
     "required": [
       "current_model",
-      "recommended_model",
+      "provider",
+      "current_capability_tier",
+      "recommended_capability_tier",
+      "recommended_model_id",
       "switch_direction",
       "task_summary",
       "task_class",

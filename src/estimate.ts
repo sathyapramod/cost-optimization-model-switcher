@@ -3,14 +3,6 @@ import type { ContextBand, ContextProbe, ContextSource } from "./types.js";
 const BAND_SMALL_MAX = 30_000;
 const BAND_MEDIUM_MAX = 80_000;
 
-export function normalizeModelTier(model: string): "opus" | "sonnet" | "haiku" | "unknown" {
-  const m = model.toLowerCase();
-  if (m.includes("opus")) return "opus";
-  if (m.includes("sonnet")) return "sonnet";
-  if (m.includes("haiku")) return "haiku";
-  return "unknown";
-}
-
 export function bytesToTokens(bytes: number, source: ContextSource = "other"): number {
   const divisor =
     source === "log_file" || source === "database_dump" || source === "csv_export"

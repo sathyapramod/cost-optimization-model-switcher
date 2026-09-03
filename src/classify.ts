@@ -1,4 +1,5 @@
-import type { ContextBand, ContextSource, ModelTier, TaskClass } from "./types.js";
+import type { CapabilityTier, ContextBand, ContextSource, Provider, TaskClass } from "./types.js";
+import { tierDisplayName } from "./catalog.js";
 
 const STRAIGHTFORWARD_PATTERNS = [
   /\bsummari[sz]e\b/i,
@@ -67,7 +68,7 @@ export function inferPrimarySource(probes: { source: ContextSource }[]): Context
   return probes[0]!.source;
 }
 
-export function needsOpusUpgrade(userMessage: string, band: ContextBand): boolean {
+export function needsPremiumUpgrade(userMessage: string, band: ContextBand): boolean {
   const text = userMessage.toLowerCase();
   const deep =
     /\barchitect(ure)?\b|\bmigrat(e|ion)\b|\bsecurity audit\b|\bexploit\b|\bmulti[- ]service\b/.test(
@@ -76,10 +77,21 @@ export function needsOpusUpgrade(userMessage: string, band: ContextBand): boolea
   return deep || band !== "small";
 }
 
-export function pickDowngradeModel(
+/** Upgrade target from fast/balanced when task is complex. */
+export function pickUpgradeTier(
+  currentTier: Exclude<CapabilityTier, "premium">,
+  userMessage: string,
+  band: ContextBand,
+): CapabilityTier {
+  if (needsPremiumUpgrade(userMessage, band)) return "premium";
+  if (currentTier === "fast") return "balanced";
+  return "premium";
+}
+
+export function pickDowngradeTier(
   userMessage: string,
   source: ContextSource,
-): Exclude<ModelTier, "opus"> {
+): Exclude<CapabilityTier, "premium"> {
   const text = userMessage.toLowerCase();
   const wantsThorough = /\bthorough\b|\bdetailed\b|\bnuanced\b/.test(text);
 
@@ -87,14 +99,20 @@ export function pickDowngradeModel(
     source === "github_pr" &&
     (/\breview\b|\bbugs?\b|\bfindings?\b|\bregressions?\b/.test(text) || wantsThorough);
 
-  if (diffHeavy) return "sonnet";
-  return "haiku";
+  if (diffHeavy) return "balanced";
+  return "fast";
 }
 
-export function defaultModelId(tier: ModelTier): string {
-  if (tier === "opus") return "claude-opus-4-6";
-  if (tier === "sonnet") return "claude-sonnet-4-6";
-  return "claude-haiku-4-5";
+/** @deprecated Use needsPremiumUpgrade */
+export const needsOpusUpgrade = needsPremiumUpgrade;
+
+/** @deprecated Use pickDowngradeTier */
+export function pickDowngradeModel(
+  userMessage: string,
+  source: ContextSource,
+): "sonnet" | "haiku" {
+  const tier = pickDowngradeTier(userMessage, source);
+  return tier === "balanced" ? "sonnet" : "haiku";
 }
 
 export function summarizeTask(userMessage: string, maxLen = 500): string {
@@ -123,23 +141,38 @@ export function buildScopedIngestPlan(source: ContextSource, refs: string[] = []
 }
 
 export function buildDowngradeRationale(
-  recommended: Exclude<ModelTier, "opus">,
+  provider: Provider,
+  recommended: Exclude<CapabilityTier, "premium">,
   tokens: number,
   taskClass: TaskClass,
 ): string {
-  const savings = recommended === "haiku" ? "5–15×" : "3–8×";
+  const savings = recommended === "fast" ? "5–15×" : "3–8×";
+  const name = tierDisplayName(recommended, provider);
+  const premium = tierDisplayName("premium", provider);
   return (
-    `${taskClass} task over ~${Math.round(tokens / 1000)}k input tokens; ${recommended} typically ` +
-    `handles this at ~${savings} lower input cost than Opus.`
+    `${taskClass} task over ~${Math.round(tokens / 1000)}k input tokens; ${name} typically ` +
+    `handles this at ~${savings} lower input cost than ${premium}.`
   );
 }
 
 export function buildUpgradeRationale(
-  current: Exclude<ModelTier, "opus">,
+  provider: Provider,
+  current: Exclude<CapabilityTier, "premium">,
+  target: CapabilityTier,
   tokens: number,
 ): string {
+  const targetName = tierDisplayName(target, provider);
+  const currentName = tierDisplayName(current, provider);
+  const tokenNote =
+    tokens > 0 ? ` over ~${Math.round(tokens / 1000)}k input tokens` : "";
+  if (target === "balanced") {
+    return (
+      `Complex task on ${currentName}${tokenNote}; ${targetName} handles implementation ` +
+      `and tests with solid reasoning at lower cost than premium tier.`
+    );
+  }
   return (
-    `Complex task on ${current} over ~${Math.round(tokens / 1000)}k input tokens; Opus provides ` +
-    `deeper multi-step reasoning for architecture, debugging, and implementation work.`
+    `Complex task on ${currentName}${tokenNote}; ${targetName} provides deeper ` +
+    `multi-step reasoning for architecture, migration, and large-context work.`
   );
 }

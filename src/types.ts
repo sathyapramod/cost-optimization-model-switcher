@@ -1,3 +1,9 @@
+export type Provider = "anthropic" | "openai" | "cursor";
+
+/** Provider-neutral capability tier: premium > balanced > fast */
+export type CapabilityTier = "premium" | "balanced" | "fast";
+
+/** @deprecated Use CapabilityTier. Kept for Anthropic tool backward compatibility. */
 export type ModelTier = "opus" | "sonnet" | "haiku";
 
 export type ContextBand = "small" | "medium" | "large";
@@ -35,11 +41,17 @@ export interface GateInput {
   currentModel: string;
   userMessage: string;
   probes?: ContextProbe[];
+  /** Override auto-detected provider */
+  provider?: Provider;
+  /** Custom or merged model catalog */
+  catalog?: import("./catalog.js").ModelCatalog;
   /** User opted out of switching for this session */
   userOptedOut?: boolean;
-  /** User explicitly chose Opus in the last few turns */
+  /** User explicitly chose premium tier in the last few turns */
+  userChosePremium?: boolean;
+  /** @deprecated Use userChosePremium */
   userChoseOpus?: boolean;
-  /** User explicitly chose Haiku/Sonnet in the last few turns */
+  /** User explicitly chose fast/balanced tier in the last few turns */
   userChoseCheapModel?: boolean;
   /** Host allows auto-switch without confirmation */
   autoSwitchEnabled?: boolean;
@@ -47,9 +59,13 @@ export interface GateInput {
 
 export interface SuggestModelSwitchInput {
   current_model: string;
-  recommended_model: ModelTier;
-  recommended_model_id?: string;
+  provider: Provider;
+  current_capability_tier: CapabilityTier;
+  recommended_capability_tier: CapabilityTier;
+  recommended_model_id: string;
   switch_direction: SwitchDirection;
+  /** @deprecated Anthropic alias; use recommended_capability_tier */
+  recommended_model?: ModelTier;
   task_summary: string;
   task_class: TaskClass;
   context_source: ContextSource;
@@ -76,5 +92,10 @@ export interface GateDecision {
   contextBand: ContextBand;
   taskClass: TaskClass;
   primarySource: ContextSource;
+  resolvedModel?: {
+    provider: Provider;
+    tier: CapabilityTier;
+    matched: boolean;
+  };
   suggestSwitch?: SuggestModelSwitchInput;
 }

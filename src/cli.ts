@@ -44,6 +44,7 @@ const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     model: { type: "string", default: "claude-opus-4-6" },
+    provider: { type: "string" },
     probe: { type: "string", multiple: true },
     "opt-out": { type: "boolean", default: false },
     "chose-opus": { type: "boolean", default: false },
@@ -84,6 +85,7 @@ if (!message) {
 const probes = (values.probe ?? []).map(parseProbe);
 const decision = evaluateGate({
   currentModel: values.model!,
+  provider: values.provider as "anthropic" | "openai" | "cursor" | undefined,
   userMessage: message,
   probes,
   userOptedOut: values["opt-out"],

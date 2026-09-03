@@ -1,0 +1,48 @@
+{
+  "version": "1",
+  "defaults": {
+    "anthropic": {
+      "premium": "claude-opus-4-6",
+      "balanced": "claude-sonnet-4-6",
+      "fast": "claude-haiku-4-5"
+    },
+    "openai": {
+      "premium": "o3",
+      "balanced": "gpt-4o",
+      "fast": "gpt-4o-mini"
+    },
+    "cursor": {
+      "premium": "claude-opus-4-6",
+      "balanced": "claude-sonnet-4-6",
+      "fast": "gpt-4o-mini"
+    }
+  },
+  "entries": [
+    { "match": "claude-opus", "provider": "anthropic", "tier": "premium", "priority": 100 },
+    { "match": "claude-sonnet", "provider": "anthropic", "tier": "balanced", "priority": 100 },
+    { "match": "claude-haiku", "provider": "anthropic", "tier": "fast", "priority": 100 },
+    { "match": "opus", "provider": "anthropic", "tier": "premium", "priority": 50 },
+    { "match": "sonnet", "provider": "anthropic", "tier": "balanced", "priority": 50 },
+    { "match": "haiku", "provider": "anthropic", "tier": "fast", "priority": 50 },
+
+    { "match": "gpt-4.1-nano", "provider": "openai", "tier": "fast", "priority": 110 },
+    { "match": "gpt-4.1-mini", "provider": "openai", "tier": "fast", "priority": 105 },
+    { "match": "gpt-4.1", "provider": "openai", "tier": "balanced", "priority": 100 },
+    { "match": "gpt-4o-mini", "provider": "openai", "tier": "fast", "priority": 100 },
+    { "match": "gpt-4o", "provider": "openai", "tier": "balanced", "priority": 90 },
+    { "match": "o4-mini", "provider": "openai", "tier": "balanced", "priority": 95 },
+    { "match": "o3-mini", "provider": "openai", "tier": "balanced", "priority": 95 },
+    { "match": "o3", "provider": "openai", "tier": "premium", "priority": 100 },
+    { "match": "o1-preview", "provider": "openai", "tier": "premium", "priority": 100 },
+    { "match": "o1-mini", "provider": "openai", "tier": "balanced", "priority": 90 },
+    { "match": "o1", "provider": "openai", "tier": "premium", "priority": 80 },
+
+    { "match": "composer-2.5", "provider": "cursor", "tier": "premium", "priority": 110 },
+    { "match": "composer-2", "provider": "cursor", "tier": "balanced", "priority": 100 },
+    { "match": "composer-1", "provider": "cursor", "tier": "balanced", "priority": 90 },
+    { "match": "cursor-small", "provider": "cursor", "tier": "fast", "priority": 100 },
+    { "match": "cursor-fast", "provider": "cursor", "tier": "fast", "priority": 100 },
+    { "match": "cursor-premium", "provider": "cursor", "tier": "premium", "priority": 100 },
+    { "match": "auto", "provider": "cursor", "tier": "balanced", "priority": 10 }
+  ]
+}

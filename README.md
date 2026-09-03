@@ -1,11 +1,21 @@
 # Cost Optimization & Model Switcher
 
-Stop Opus from ingesting large external context for straightforward tasks. This repo ships:
+Provider-agnostic model gate for **Anthropic**, **OpenAI**, and **Cursor**. Matches capability tier to task before ingesting large external context.
 
-- **SKILL.md** — Claude Agent Skill instructions (install into `~/.claude/skills/` later)
+| Tier | Anthropic | OpenAI | Use for |
+|------|-----------|--------|---------|
+| **premium** | Opus | o3, o1 | Complex reasoning |
+| **balanced** | Sonnet | gpt-4o | Nuanced review |
+| **fast** | Haiku | gpt-4o-mini | Summarize, extract, format |
+
+See [docs/PROVIDERS.md](docs/PROVIDERS.md) for catalog customization.
+
+This repo ships:
+
+- **SKILL.md** — Agent skill instructions
+- **catalogs/default.json** — model ID → tier mapping
 - **schemas/suggest_model_switch.json** — tool schema for host UI / proxy
-- **src/** — TypeScript gate library (`evaluateGate`, token heuristics, task classification)
-- **src/proxy.ts** — minimal HTTP reference server for integration testing
+- **src/** — TypeScript gate library
 
 ## Quick start
 
@@ -25,6 +35,16 @@ npm run gate -- \
 ```
 
 Exit code `2` means the gate recommends a model switch. Add `--json` for machine-readable output.
+
+```bash
+# OpenAI: downgrade o3 for log summarize
+npm run gate -- --model o3 --provider openai \
+  --probe log_file:2000000 "Summarize this CI log"
+
+# Cursor: upgrade fast tier for complex work
+npm run gate -- --model cursor-small --provider cursor \
+  "Design auth migration from this dump"
+```
 
 ### Probe formats
 
@@ -81,8 +101,11 @@ Register `SUGGEST_MODEL_SWITCH_TOOL` with your Claude host alongside the skill.
 
 ```
 ├── SKILL.md
+├── catalogs/default.json
+├── docs/PROVIDERS.md
 ├── schemas/suggest_model_switch.json
 ├── src/
+│   ├── catalog.ts       # model resolution + tier defaults
 │   ├── gate.ts          # evaluateGate — main entry
 │   ├── estimate.ts      # token heuristics
 │   ├── classify.ts      # task classification
