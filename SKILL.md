@@ -121,6 +121,29 @@ Options:
 
 **Never** write "Switch to Opus?" as plain text and continue — the user must select an option first.
 
+### Claude Code: manual model change required (no auto-switch yet)
+
+`AskUserQuestion` and this skill **cannot** change the model shown in the Claude Code
+status bar (e.g. "Haiku 4.5"). There is no registered `suggest_model_switch` host hook
+in Claude Code today.
+
+**After the user picks a switch option, you MUST:**
+
+1. **Stop.** Do not read files, run commands, or implement until the model actually changes.
+2. Tell the user exactly:
+   ```
+   Please switch the session model now:
+   - Run `/model` and choose Sonnet (or Opus), OR
+   - Use the model picker in the status bar.
+
+   Reply "switched" once the bottom bar shows the new model.
+   ```
+3. **Wait** for confirmation. If they reply "switched" but you cannot verify, ask them to confirm what the status bar shows.
+4. Only then continue the task.
+
+If the user selects "Switch to Sonnet and continue" but stays on Haiku, **do not proceed**
+with implementation — remind them to run `/model` first.
+
 ## Step 1 — Estimate incoming context (tokens)
 
 Estimate **total tokens to ingest** (not output). Use the highest applicable signal;
