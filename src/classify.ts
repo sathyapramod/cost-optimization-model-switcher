@@ -21,6 +21,9 @@ const STRAIGHTFORWARD_PATTERNS = [
   /\bany blockers?\b/i,
 ];
 
+const DEEP_SIGNAL_PATTERN =
+  /\barchitect(ure)?\b|\bmigrat(e|ion)\b|\bsecurity audit\b|\bexploit\b|\bmulti[- ]service\b/i;
+
 const COMPLEX_PATTERNS = [
   /\barchitect(ure)?\b/i,
   /\bdesign\b/i,
@@ -38,16 +41,48 @@ const COMPLEX_PATTERNS = [
   /\bplan the\b/i,
 ];
 
-export function classifyTask(userMessage: string): TaskClass {
+function clampScore(n: number): number {
+  return Math.max(0, Math.min(5, n));
+}
+
+export function hasDeepSignals(userMessage: string): boolean {
+  return DEEP_SIGNAL_PATTERN.test(userMessage);
+}
+
+/** Reasoning / code-change difficulty from the user message only (not context size). */
+export function scoreTaskDifficulty(userMessage: string): number {
   const text = userMessage.trim();
-  if (!text) return "complex";
+  if (!text) return 5;
 
-  const straightforward = STRAIGHTFORWARD_PATTERNS.some((re) => re.test(text));
-  const complex = COMPLEX_PATTERNS.some((re) => re.test(text));
+  let score = 1;
+  const straightHits = STRAIGHTFORWARD_PATTERNS.filter((re) => re.test(text)).length;
+  const complexHits = COMPLEX_PATTERNS.filter((re) => re.test(text)).length;
 
-  if (straightforward && complex) return "complex";
-  if (straightforward) return "straightforward";
-  return "complex";
+  score += complexHits;
+  score -= Math.min(straightHits, 2);
+  if (hasDeepSignals(text)) score += 2;
+  if (straightHits > 0 && complexHits > 0) score = Math.max(score, 3);
+
+  return clampScore(score);
+}
+
+/** Ingest size / external context heaviness (from probes, not task verbs). */
+export function scoreIngestComplexity(
+  band: ContextBand,
+  estimatedInputTokens: number,
+): number {
+  if (band === "large") return 5;
+  if (band === "medium") return 3;
+  if (estimatedInputTokens > 0) return 1;
+  return 0;
+}
+
+export function taskClassFromDifficulty(taskDifficulty: number): TaskClass {
+  return taskDifficulty <= 1 ? "straightforward" : "complex";
+}
+
+export function classifyTask(userMessage: string): TaskClass {
+  return taskClassFromDifficulty(scoreTaskDifficulty(userMessage));
 }
 
 export function inferPrimarySource(probes: { source: ContextSource }[]): ContextSource {
@@ -68,13 +103,17 @@ export function inferPrimarySource(probes: { source: ContextSource }[]): Context
   return probes[0]!.source;
 }
 
-export function needsPremiumUpgrade(userMessage: string, band: ContextBand): boolean {
-  const text = userMessage.toLowerCase();
-  const deep =
-    /\barchitect(ure)?\b|\bmigrat(e|ion)\b|\bsecurity audit\b|\bexploit\b|\bmulti[- ]service\b/.test(
-      text,
-    );
-  return deep || band !== "small";
+export function needsPremiumUpgrade(
+  userMessage: string,
+  band: ContextBand,
+  taskDifficulty?: number,
+): boolean {
+  const taskScore = taskDifficulty ?? scoreTaskDifficulty(userMessage);
+  const ingestScore = scoreIngestComplexity(band, 0);
+  if (hasDeepSignals(userMessage)) return true;
+  if (taskScore >= 4) return true;
+  if (taskScore >= 2 && ingestScore >= 3) return true;
+  return false;
 }
 
 /** Upgrade target from fast/balanced when task is complex. */
@@ -82,8 +121,9 @@ export function pickUpgradeTier(
   currentTier: Exclude<CapabilityTier, "premium">,
   userMessage: string,
   band: ContextBand,
+  taskDifficulty?: number,
 ): CapabilityTier {
-  if (needsPremiumUpgrade(userMessage, band)) return "premium";
+  if (needsPremiumUpgrade(userMessage, band, taskDifficulty)) return "premium";
   if (currentTier === "fast") return "balanced";
   return "premium";
 }

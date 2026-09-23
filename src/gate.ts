@@ -7,6 +7,8 @@ import {
   needsPremiumUpgrade,
   pickDowngradeTier,
   pickUpgradeTier,
+  scoreIngestComplexity,
+  scoreTaskDifficulty,
   summarizeTask,
 } from "./classify.js";
 import {
@@ -45,11 +47,12 @@ function shouldUpgrade(
   taskClass: GateDecision["taskClass"],
   band: GateDecision["contextBand"],
   userMessage: string,
+  taskDifficulty: number,
 ): boolean {
   if (taskClass !== "complex") return false;
   if (tier === "premium") return false;
   if (tier === "fast") return true;
-  return needsPremiumUpgrade(userMessage, band);
+  return needsPremiumUpgrade(userMessage, band, taskDifficulty);
 }
 
 function buildSwitchPayload(
@@ -106,15 +109,18 @@ export function evaluateGate(input: GateInput): GateDecision {
   const catalog = mergeCatalog(loadDefaultCatalog(), input.catalog);
   const resolved = resolveModel(input.currentModel, catalog, input.provider);
   const probes = input.probes ?? [];
+  const taskDifficulty = scoreTaskDifficulty(input.userMessage);
   const taskClass = classifyTask(input.userMessage);
   const estimatedInputTokens = estimateTotalTokens(probes);
   const contextBand = resolveContextBand(probes, estimatedInputTokens);
+  const ingestComplexity = scoreIngestComplexity(contextBand, estimatedInputTokens);
   const primarySource = inferPrimarySource(probes);
 
   const base = {
     estimatedInputTokens,
     contextBand,
     taskClass,
+    scores: { taskDifficulty, ingestComplexity },
     primarySource,
     resolvedModel: {
       provider: resolved.provider,
@@ -189,7 +195,15 @@ export function evaluateGate(input: GateInput): GateDecision {
   }
 
   if (resolved.tier === "fast" || resolved.tier === "balanced") {
-    if (!shouldUpgrade(resolved.tier, taskClass, contextBand, input.userMessage)) {
+    if (
+      !shouldUpgrade(
+        resolved.tier,
+        taskClass,
+        contextBand,
+        input.userMessage,
+        taskDifficulty,
+      )
+    ) {
       const reason =
         taskClass === "straightforward"
           ? `cost-gate: skipped (straightforward on ${resolved.tier})`
@@ -201,6 +215,7 @@ export function evaluateGate(input: GateInput): GateDecision {
       resolved.tier,
       input.userMessage,
       contextBand,
+      taskDifficulty,
     );
     const confidence =
       resolved.tier === "fast" && recommendedTier === "balanced"

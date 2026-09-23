@@ -33,10 +33,14 @@ export {
   buildScopedIngestPlan,
   buildUpgradeRationale,
   classifyTask,
+  hasDeepSignals,
   needsPremiumUpgrade,
   pickDowngradeTier,
   pickUpgradeTier,
+  scoreIngestComplexity,
+  scoreTaskDifficulty,
   summarizeTask,
+  taskClassFromDifficulty,
 } from "./classify.js";
 export { SUGGEST_MODEL_SWITCH_TOOL, handleSuggestModelSwitch } from "./tool-schema.js";
 export type {
@@ -48,6 +52,7 @@ export type {
   GateAction,
   GateDecision,
   GateInput,
+  GateScores,
   ModelTier,
   Provider,
   SwitchDirection,

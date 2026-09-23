@@ -92,12 +92,19 @@ export interface SuggestModelSwitchResult {
   message: string;
 }
 
+/** 0–5 heuristic scores (see scoreTaskDifficulty / scoreIngestComplexity). */
+export interface GateScores {
+  taskDifficulty: number;
+  ingestComplexity: number;
+}
+
 export interface GateDecision {
   action: GateAction;
   reason: string;
   estimatedInputTokens: number;
   contextBand: ContextBand;
   taskClass: TaskClass;
+  scores: GateScores;
   primarySource: ContextSource;
   resolvedModel?: {
     provider: Provider;

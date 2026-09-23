@@ -31,7 +31,7 @@ Target:
 | Gap | Issue | Priority | Summary |
 |-----|-------|----------|---------|
 | Real cost model | [#3](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/3) | **P0** | Input/output pricing, estimated $ current vs recommended, savings % |
-| Task scoring v1 | [#4](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/4) | P1 | Separate ingest size from task difficulty (beyond regex-only) |
+| Task scoring v1 | [#4](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/4) | P1 | Shipped — [SCORING.md](./SCORING.md) |
 | Context optimization | [#5](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/5) | P1 | Scoped ingest (grep/tail/JQL) as first-class, not only a routing signal |
 | Benchmarks | [#6](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/6) | P2 | Matrix of tasks × tiers; **cost per successful task** |
 | Feedback loop | [#7](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/7) | P2 | Outcome telemetry (proxy-first); learn routing over time |

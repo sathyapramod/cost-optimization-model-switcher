@@ -109,6 +109,29 @@ describe("evaluateGate", () => {
     assert.equal(decision.suggestSwitch?.recommended_capability_tier, "premium");
   });
 
+  it("exposes task and ingest scores on decisions", () => {
+    const decision = evaluateGate({
+      currentModel: "claude-opus-4-6",
+      userMessage: "Summarize this 2MB CI log",
+      probes: [{ source: "log_file", bytes: 2_000_000 }],
+    });
+
+    assert.ok(decision.scores.taskDifficulty <= 1);
+    assert.ok(decision.scores.ingestComplexity >= 3);
+  });
+
+  it("stays on sonnet for complex task with small context", () => {
+    const decision = evaluateGate({
+      currentModel: "claude-sonnet-4-6",
+      userMessage: "Fix the race condition in this 100-line concurrency module",
+      probes: [{ source: "paste", bytes: 8_000 }],
+    });
+
+    assert.equal(decision.action, "proceed");
+    assert.equal(decision.taskClass, "complex");
+    assert.match(decision.reason, /within tier capacity/);
+  });
+
   it("respects user opt-out", () => {
     const decision = evaluateGate({
       currentModel: "claude-opus-4-6",
