@@ -84,6 +84,9 @@ export interface SuggestModelSwitchInput {
   estimated_savings_usd?: number;
   savings_percent?: number;
   cost_pricing_note?: string;
+  estimated_effective_input_tokens?: number;
+  estimated_cost_current_if_scoped_usd?: number;
+  estimated_cost_recommended_if_scoped_usd?: number;
 }
 
 export interface SuggestModelSwitchResult {
@@ -98,6 +101,14 @@ export interface GateScores {
   ingestComplexity: number;
 }
 
+export interface ContextOptimization {
+  required: boolean;
+  plan: string;
+  rawInputTokens: number;
+  effectiveInputTokens: number;
+  reductionPercent: number;
+}
+
 export interface GateDecision {
   action: GateAction;
   reason: string;
@@ -105,6 +116,7 @@ export interface GateDecision {
   contextBand: ContextBand;
   taskClass: TaskClass;
   scores: GateScores;
+  contextOptimization: ContextOptimization;
   primarySource: ContextSource;
   resolvedModel?: {
     provider: Provider;

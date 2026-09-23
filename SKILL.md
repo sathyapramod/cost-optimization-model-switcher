@@ -202,6 +202,15 @@ wc -c <file>
 
 When uncertain, round **up** one band.
 
+### Scoped ingest (mandatory before full fetch)
+
+If probes imply **medium/large** context or a **large** file/PR/board:
+
+1. **STOP** — do not load the full dump, full log, or full PR diff into the model.
+2. Follow `scoped_ingest_plan` / `contextOptimization.plan` from the gate (or `docs/CONTEXT_OPTIMIZATION.md`).
+3. Prefer **grep**, **tail**, **JQL**, **per-file PR diffs**, and **schema samples** first.
+4. When recommending a switch, cite **effective** token/cost fields (`estimated_effective_input_tokens`, `estimated_*_if_scoped_usd`) when present.
+
 ## Step 2 — Classify the task
 
 ### Straightforward → switch candidate (Sonnet or Haiku)

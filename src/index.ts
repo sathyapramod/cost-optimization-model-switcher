@@ -1,5 +1,12 @@
 export { evaluateGate } from "./gate.js";
 export {
+  contextReductionPercent,
+  estimateEffectiveInputTokens,
+  formatScopedIngestHint,
+  requiresScopedIngest,
+  scopedRetentionFraction,
+} from "./ingest-scope.js";
+export {
   buildSwitchCostEstimate,
   estimateOutputTokens,
   estimateTurnCostUsd,
@@ -51,6 +58,7 @@ export type {
   ContextSource,
   GateAction,
   GateDecision,
+  ContextOptimization,
   GateInput,
   GateScores,
   ModelTier,

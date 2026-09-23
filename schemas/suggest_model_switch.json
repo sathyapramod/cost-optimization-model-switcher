@@ -130,6 +130,21 @@
         "type": "string",
         "maxLength": 500,
         "description": "Assumptions: pricing source, output heuristic, not invoice data."
+      },
+      "estimated_effective_input_tokens": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Input tokens after scoped ingest heuristic (grep/tail/JQL)."
+      },
+      "estimated_cost_current_if_scoped_usd": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Estimated current-model cost if scoped ingest is applied first."
+      },
+      "estimated_cost_recommended_if_scoped_usd": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Estimated recommended-model cost with scoped ingest."
       }
     },
     "required": [

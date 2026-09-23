@@ -164,13 +164,18 @@ export function summarizeTask(userMessage: string, maxLen = 500): string {
 export function buildScopedIngestPlan(source: ContextSource, refs: string[] = []): string {
   switch (source) {
     case "github_pr":
-      return "Fetch PR file list and diff stat first; load only changed files relevant to the review scope.";
+      return (
+        "Run `gh pr view` + diff stat / `--name-only` first; fetch per-file diffs for relevant paths only."
+      );
     case "jira":
       return refs.length
         ? `Filter to issues: ${refs.slice(0, 5).join(", ")}${refs.length > 5 ? ", …" : ""}.`
         : "Apply JQL filter to sprint or label before full board export.";
     case "log_file":
-      return "grep error/fatal patterns or tail last 500 lines before full-file summarize.";
+      return (
+        "Do not read the full file first: run `grep -Ei 'error|fatal|exception|fail' <path>` " +
+        "or `tail -n 500 <path>`; expand only if gaps remain."
+      );
     case "database_dump":
     case "csv_export":
     case "json_export":

@@ -109,6 +109,19 @@ describe("evaluateGate", () => {
     assert.equal(decision.suggestSwitch?.recommended_capability_tier, "premium");
   });
 
+  it("requires scoped ingest plan for large logs", () => {
+    const decision = evaluateGate({
+      currentModel: "claude-opus-4-6",
+      userMessage: "Summarize this 2MB CI log",
+      probes: [{ source: "log_file", bytes: 2_000_000 }],
+    });
+
+    assert.equal(decision.contextOptimization.required, true);
+    assert.match(decision.contextOptimization.plan, /grep|tail/i);
+    assert.ok(decision.contextOptimization.effectiveInputTokens < decision.estimatedInputTokens);
+    assert.ok(decision.suggestSwitch?.estimated_effective_input_tokens != null);
+  });
+
   it("exposes task and ingest scores on decisions", () => {
     const decision = evaluateGate({
       currentModel: "claude-opus-4-6",

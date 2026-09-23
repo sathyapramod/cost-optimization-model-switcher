@@ -94,9 +94,22 @@ const decision = evaluateGate({
   autoSwitchEnabled: values["auto-switch"],
 });
 
+function printContextWarnings(decision: ReturnType<typeof evaluateGate>) {
+  const opt = decision.contextOptimization;
+  if (!opt?.required) return;
+  console.error(`context: scoped ingest required — ${opt.plan}`);
+  if (opt.reductionPercent >= 15 && opt.rawInputTokens > 0) {
+    console.error(
+      `context: full ingest ~${Math.round(opt.rawInputTokens / 1000)}k tokens; ` +
+        `after scope ~${Math.round(opt.effectiveInputTokens / 1000)}k (~${opt.reductionPercent}% reduction).`,
+    );
+  }
+}
+
 if (values.json) {
   console.log(JSON.stringify(decision, null, 2));
 } else {
+  printContextWarnings(decision);
   console.log(decision.reason);
   if (decision.suggestSwitch) {
     const sw = decision.suggestSwitch;
