@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Live benchmark results",
+  "description": "Optional overrides for success rates and notes from real model runs.",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fixtureId", "tier", "success", "latencyMs", "inputTokens", "outputTokens"],
+        "properties": {
+          "fixtureId": { "type": "string" },
+          "tier": { "enum": ["fast", "balanced", "premium"] },
+          "success": { "type": "boolean" },
+          "escalated": { "type": "boolean" },
+          "latencyMs": { "type": "number" },
+          "inputTokens": { "type": "integer" },
+          "outputTokens": { "type": "integer" },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  }
+}

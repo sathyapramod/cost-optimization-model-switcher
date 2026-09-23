@@ -1,5 +1,19 @@
 export { evaluateGate } from "./gate.js";
 export {
+  assertBenchmarkExpectations,
+  benchmarkFixture,
+  formatBenchmarkMarkdown,
+  loadFixtureSuite,
+  loadSuccessRates,
+  runBenchmarkSuite,
+} from "./benchmark.js";
+export type {
+  BenchmarkFixture,
+  BenchmarkReport,
+  FixtureBenchmarkResult,
+  TierBenchmarkCell,
+} from "./benchmark.js";
+export {
   contextReductionPercent,
   estimateEffectiveInputTokens,
   formatScopedIngestHint,

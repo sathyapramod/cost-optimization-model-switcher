@@ -1,0 +1,95 @@
+{
+  "version": "1",
+  "provider": "anthropic",
+  "fixtures": [
+    {
+      "id": "summarize-large-log",
+      "category": "summarization",
+      "description": "Large log TL;DR on premium should downgrade",
+      "userMessage": "Summarize this 2MB CI log and list errors only",
+      "probes": [{ "source": "log_file", "bytes": 2000000 }],
+      "expectByTier": {
+        "premium": { "action": "suggest_switch", "recommendedTier": "fast" },
+        "fast": { "action": "proceed" },
+        "balanced": { "action": "proceed" }
+      }
+    },
+    {
+      "id": "pr-review-medium",
+      "category": "pr_review",
+      "description": "Straightforward PR bug list on Opus",
+      "userMessage": "Review PR #482 diff and list potential bugs",
+      "probes": [
+        {
+          "source": "github_pr",
+          "additions": 1200,
+          "deletions": 400,
+          "changedFiles": 18
+        }
+      ],
+      "expectByTier": {
+        "premium": { "action": "suggest_switch", "recommendedTier": "balanced" }
+      }
+    },
+    {
+      "id": "crud-implement-small",
+      "category": "crud_implementation",
+      "description": "Implement feature on Haiku should upgrade to Sonnet",
+      "userMessage": "Implement a new Backstage plugin for Git repo registration with tests",
+      "probes": [],
+      "expectByTier": {
+        "fast": { "action": "suggest_switch", "recommendedTier": "balanced" }
+      }
+    },
+    {
+      "id": "architecture-migration",
+      "category": "architecture",
+      "description": "Deep migration design on Haiku → Opus",
+      "userMessage": "Design auth migration from this database dump",
+      "probes": [{ "source": "database_dump", "bytes": 500000 }],
+      "expectByTier": {
+        "fast": { "action": "suggest_switch", "recommendedTier": "premium" }
+      }
+    },
+    {
+      "id": "debug-small-context",
+      "category": "debugging",
+      "description": "Small complex fix on Sonnet should stay",
+      "userMessage": "Fix the race condition in this 100-line concurrency module",
+      "probes": [{ "source": "paste", "bytes": 8000 }],
+      "expectByTier": {
+        "balanced": { "action": "proceed" }
+      }
+    },
+    {
+      "id": "security-audit",
+      "category": "security",
+      "description": "Security audit on Sonnet with medium context → Opus",
+      "userMessage": "Run a security audit on this API surface and explain exploit paths",
+      "probes": [{ "source": "github_pr", "additions": 800, "deletions": 200, "changedFiles": 12 }],
+      "expectByTier": {
+        "balanced": { "action": "suggest_switch", "recommendedTier": "premium" }
+      }
+    },
+    {
+      "id": "refactor-medium",
+      "category": "refactor",
+      "description": "Refactor on Haiku upgrades",
+      "userMessage": "Refactor the gate module for clarity and add tests",
+      "probes": [{ "source": "paste", "bytes": 40000 }],
+      "expectByTier": {
+        "fast": { "action": "suggest_switch", "recommendedTier": "balanced" }
+      }
+    },
+    {
+      "id": "jira-extract",
+      "category": "summarization",
+      "description": "Jira triage on premium",
+      "userMessage": "Extract all P0 Jira tickets this sprint with owners",
+      "probes": [{ "source": "jira", "issueCount": 45 }],
+      "expectByTier": {
+        "premium": { "action": "suggest_switch", "recommendedTier": "fast" }
+      }
+    }
+  ]
+}

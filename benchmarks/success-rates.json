@@ -1,0 +1,13 @@
+{
+  "version": "1",
+  "note": "Assumed task success rates by category × tier for cost-per-success math. Replace with benchmarks/live-results.json after live eval runs.",
+  "rates": {
+    "summarization": { "fast": 0.92, "balanced": 0.96, "premium": 0.98 },
+    "pr_review": { "fast": 0.75, "balanced": 0.94, "premium": 0.97 },
+    "crud_implementation": { "fast": 0.55, "balanced": 0.9, "premium": 0.96 },
+    "refactor": { "fast": 0.5, "balanced": 0.88, "premium": 0.95 },
+    "architecture": { "fast": 0.35, "balanced": 0.7, "premium": 0.96 },
+    "debugging": { "fast": 0.6, "balanced": 0.9, "premium": 0.97 },
+    "security": { "fast": 0.45, "balanced": 0.75, "premium": 0.96 }
+  }
+}
