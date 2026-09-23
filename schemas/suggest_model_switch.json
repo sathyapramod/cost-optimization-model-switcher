@@ -102,6 +102,34 @@
         "type": "boolean",
         "default": true,
         "description": "If true, host should carry user message and gate metadata into the new session."
+      },
+      "estimated_output_tokens": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Heuristic output tokens for this turn (see docs/COST_MODEL.md)."
+      },
+      "estimated_cost_current_usd": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Estimated USD for current model (input + output heuristic)."
+      },
+      "estimated_cost_recommended_usd": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Estimated USD for recommended model (same token assumptions)."
+      },
+      "estimated_savings_usd": {
+        "type": "number",
+        "description": "current minus recommended; negative if upgrade costs more."
+      },
+      "savings_percent": {
+        "type": "number",
+        "description": "Percent change vs current estimated cost (positive = cheaper)."
+      },
+      "cost_pricing_note": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "Assumptions: pricing source, output heuristic, not invoice data."
       }
     },
     "required": [

@@ -1,5 +1,15 @@
 export { evaluateGate } from "./gate.js";
 export {
+  buildSwitchCostEstimate,
+  estimateOutputTokens,
+  estimateTurnCostUsd,
+  formatSavingsLine,
+  loadDefaultPricing,
+  mergePricing,
+  resolveTokenRates,
+} from "./cost.js";
+export type { PricingCatalog, SwitchCostEstimate, TokenRates } from "./cost.js";
+export {
   defaultModelForTier,
   loadDefaultCatalog,
   mergeCatalog,

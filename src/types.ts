@@ -77,6 +77,13 @@ export interface SuggestModelSwitchInput {
   scoped_ingest_plan?: string;
   auto_switch?: boolean;
   preserve_context?: boolean;
+  /** Heuristic single-turn cost (see catalogs/pricing.json) */
+  estimated_output_tokens?: number;
+  estimated_cost_current_usd?: number;
+  estimated_cost_recommended_usd?: number;
+  estimated_savings_usd?: number;
+  savings_percent?: number;
+  cost_pricing_note?: string;
 }
 
 export interface SuggestModelSwitchResult {

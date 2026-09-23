@@ -251,6 +251,10 @@ When **all** are true:
 
 Call the tool with structured rationale. Set `switch_direction` to `downgrade`
 or `upgrade`. Schema: `schemas/suggest_model_switch.json`.
+Include cost fields when available (`estimated_cost_*`, `savings_percent`) or run
+`npm run gate -- --json` with probes — see `docs/COST_MODEL.md`.
+When prompting the user, state **estimated turn cost** and **% savings** (not
+invoice amounts). Example: "Switch to Sonnet — estimated turn cost ~$0.45 → ~$0.09 (~80% lower)."
 The host shows a confirmation UI or auto-switches per user preference.
 
 ### Fallback — `AskUserQuestion`

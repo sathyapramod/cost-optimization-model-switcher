@@ -99,10 +99,18 @@ if (values.json) {
 } else {
   console.log(decision.reason);
   if (decision.suggestSwitch) {
-    console.log(
-      `recommended: ${decision.suggestSwitch.recommended_model_id} (${decision.suggestSwitch.confidence} confidence)`,
-    );
-    console.log(decision.suggestSwitch.rationale);
+    const sw = decision.suggestSwitch;
+    console.log(`recommended: ${sw.recommended_model_id} (${sw.confidence} confidence)`);
+    if (sw.estimated_cost_current_usd != null && sw.estimated_cost_recommended_usd != null) {
+      console.log(
+        `estimated turn cost: $${sw.estimated_cost_current_usd.toFixed(4)} → $${sw.estimated_cost_recommended_usd.toFixed(4)}` +
+          (sw.savings_percent != null && sw.estimated_savings_usd! > 0
+            ? ` (save ~${sw.savings_percent}%)`
+            : ""),
+      );
+    }
+    console.log(sw.rationale);
+    if (sw.cost_pricing_note) console.log(`note: ${sw.cost_pricing_note}`);
   }
 }
 

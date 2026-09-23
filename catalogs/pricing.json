@@ -1,0 +1,33 @@
+{
+  "version": "1",
+  "unit": "usd_per_million_tokens",
+  "note": "Heuristic list prices for estimates only — not invoice data. Update when vendors change pricing.",
+  "models": {
+    "claude-opus-4-6": { "input": 15, "output": 75 },
+    "claude-sonnet-4-6": { "input": 3, "output": 15 },
+    "claude-haiku-4-5": { "input": 1, "output": 5 },
+    "o3": { "input": 10, "output": 40 },
+    "gpt-4o": { "input": 2.5, "output": 10 },
+    "gpt-4o-mini": { "input": 0.15, "output": 0.6 },
+    "composer-2.5": { "input": 15, "output": 75 },
+    "composer-2": { "input": 3, "output": 15 },
+    "cursor-small": { "input": 0.15, "output": 0.6 }
+  },
+  "tierDefaults": {
+    "anthropic": {
+      "premium": { "input": 15, "output": 75 },
+      "balanced": { "input": 3, "output": 15 },
+      "fast": { "input": 1, "output": 5 }
+    },
+    "openai": {
+      "premium": { "input": 10, "output": 40 },
+      "balanced": { "input": 2.5, "output": 10 },
+      "fast": { "input": 0.15, "output": 0.6 }
+    },
+    "cursor": {
+      "premium": { "input": 15, "output": 75 },
+      "balanced": { "input": 3, "output": 15 },
+      "fast": { "input": 0.15, "output": 0.6 }
+    }
+  }
+}

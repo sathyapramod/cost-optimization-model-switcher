@@ -13,7 +13,13 @@
     "estimated_input_tokens": 500000,
     "context_band": "large",
     "confidence": "high",
-    "rationale": "straightforward task over ~500k input tokens; GPT-4o mini typically handles this at ~5–15× lower input cost than o-series / GPT premium.",
+    "rationale": "straightforward task over ~500k input tokens; GPT-4o mini typically handles this at ~5–15× lower input cost than o-series / GPT premium. Estimated turn cost ~$5.3200 → ~$0.0798 (~98.5% lower on recommended model).",
+    "estimated_output_tokens": 8000,
+    "estimated_cost_current_usd": 5.32,
+    "estimated_cost_recommended_usd": 0.0798,
+    "estimated_savings_usd": 5.2402,
+    "savings_percent": 98.5,
+    "cost_pricing_note": "Heuristic list prices for estimates only — not invoice data. Output tokens estimated at 8000 for straightforward task (model/model rates).",
     "auto_switch": false,
     "preserve_context": true
   }

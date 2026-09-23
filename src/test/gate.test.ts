@@ -21,6 +21,8 @@ describe("evaluateGate", () => {
     assert.equal(decision.action, "suggest_switch");
     assert.equal(decision.suggestSwitch?.recommended_capability_tier, "balanced");
     assert.equal(decision.taskClass, "straightforward");
+    assert.ok((decision.suggestSwitch?.estimated_savings_usd ?? 0) > 0);
+    assert.ok((decision.suggestSwitch?.savings_percent ?? 0) > 0);
   });
 
   it("stays on opus for complex architecture tasks", () => {

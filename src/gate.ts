@@ -16,6 +16,7 @@ import {
   resolveModel,
   tierToLegacyAnthropicTier,
 } from "./catalog.js";
+import { buildSwitchCostEstimate, formatSavingsLine } from "./cost.js";
 import { estimateTotalTokens, resolveContextBand } from "./estimate.js";
 import type {
   CapabilityTier,
@@ -62,13 +63,28 @@ function buildSwitchPayload(
 ): SuggestModelSwitchInput {
   const catalog = mergeCatalog(loadDefaultCatalog(), input.catalog);
   const refs = (input.probes ?? []).flatMap((p) => p.refs ?? []);
+  const recommendedModelId = defaultModelForTier(
+    resolved.provider,
+    recommendedTier,
+    catalog,
+  );
+
+  const cost = buildSwitchCostEstimate({
+    currentModelId: input.currentModel,
+    recommendedModelId,
+    provider: resolved.provider,
+    currentTier: resolved.tier,
+    recommendedTier,
+    inputTokens: base.estimatedInputTokens,
+    taskClass: base.taskClass,
+  });
 
   return {
     current_model: input.currentModel,
     provider: resolved.provider,
     current_capability_tier: resolved.tier,
     recommended_capability_tier: recommendedTier,
-    recommended_model_id: defaultModelForTier(resolved.provider, recommendedTier, catalog),
+    recommended_model_id: recommendedModelId,
     recommended_model: tierToLegacyAnthropicTier(recommendedTier),
     switch_direction: direction,
     task_summary: summarizeTask(input.userMessage),
@@ -78,10 +94,11 @@ function buildSwitchPayload(
     estimated_input_tokens: base.estimatedInputTokens,
     context_band: base.contextBand,
     confidence,
-    rationale,
+    rationale: rationale + formatSavingsLine(cost),
     scoped_ingest_plan: buildScopedIngestPlan(base.primarySource, refs),
     auto_switch: input.autoSwitchEnabled ?? false,
     preserve_context: true,
+    ...cost,
   };
 }
 

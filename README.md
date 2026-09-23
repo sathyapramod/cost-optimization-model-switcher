@@ -361,5 +361,7 @@ MIT — see [LICENSE](LICENSE)
 ## Links
 
 - [Provider & catalog guide](docs/PROVIDERS.md)
+- [Cost estimates (heuristic)](docs/COST_MODEL.md)
+- [Roadmap](docs/ROADMAP.md)
 - [Example tool call](examples/tool-call.json)
 - [Integration examples](examples/integration.md)
