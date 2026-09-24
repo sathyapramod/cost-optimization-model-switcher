@@ -24,3 +24,5 @@ Small ingest + complex fix/debug on Sonnet → **stay on Sonnet** (no automatic 
 `evaluateGate()` returns `scores: { taskDifficulty, ingestComplexity }` on every decision. CLI `--json` includes the same object.
 
 Helpers: `scoreTaskDifficulty`, `scoreIngestComplexity`, `taskClassFromDifficulty` (exported from the package).
+
+V2 adds structured analysis: `analyzeTask()` and `GateDecision.taskAnalysis` — see [TASK_ANALYZER.md](./TASK_ANALYZER.md).

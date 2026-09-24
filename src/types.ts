@@ -115,6 +115,8 @@ export interface GateDecision {
   estimatedInputTokens: number;
   contextBand: ContextBand;
   taskClass: TaskClass;
+  /** V2 task analyzer output (#11); same heuristics as `scores` + routing hints. */
+  taskAnalysis?: import("./task-analyzer.js").TaskAnalysis;
   scores: GateScores;
   contextOptimization: ContextOptimization;
   primarySource: ContextSource;

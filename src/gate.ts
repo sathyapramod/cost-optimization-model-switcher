@@ -2,15 +2,12 @@ import {
   buildDowngradeRationale,
   buildScopedIngestPlan,
   buildUpgradeRationale,
-  classifyTask,
-  inferPrimarySource,
   needsPremiumUpgrade,
   pickDowngradeTier,
   pickUpgradeTier,
-  scoreIngestComplexity,
-  scoreTaskDifficulty,
   summarizeTask,
 } from "./classify.js";
+import { analyzeTask } from "./task-analyzer.js";
 import {
   defaultModelForTier,
   loadDefaultCatalog,
@@ -179,12 +176,18 @@ export function evaluateGate(input: GateInput): GateDecision {
   const catalog = mergeCatalog(loadDefaultCatalog(), input.catalog);
   const resolved = resolveModel(input.currentModel, catalog, input.provider);
   const probes = input.probes ?? [];
-  const taskDifficulty = scoreTaskDifficulty(input.userMessage);
-  const taskClass = classifyTask(input.userMessage);
   const estimatedInputTokens = estimateTotalTokens(probes);
   const contextBand = resolveContextBand(probes, estimatedInputTokens);
-  const ingestComplexity = scoreIngestComplexity(contextBand, estimatedInputTokens);
-  const primarySource = inferPrimarySource(probes);
+  const taskAnalysis = analyzeTask({
+    userMessage: input.userMessage,
+    probes,
+    contextBand,
+    estimatedInputTokens,
+  });
+  const taskDifficulty = taskAnalysis.taskDifficulty;
+  const taskClass = taskAnalysis.taskClass;
+  const ingestComplexity = taskAnalysis.ingestComplexity;
+  const primarySource = taskAnalysis.primarySource;
   const contextOptimization = buildContextOptimization(
     probes,
     primarySource,
@@ -197,6 +200,7 @@ export function evaluateGate(input: GateInput): GateDecision {
     estimatedInputTokens,
     contextBand,
     taskClass,
+    taskAnalysis,
     scores: { taskDifficulty, ingestComplexity },
     contextOptimization,
     primarySource,

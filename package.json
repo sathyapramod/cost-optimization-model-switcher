@@ -1,7 +1,7 @@
 {
   "name": "cost-optimization-model-switcher",
   "version": "1.1.0",
-  "description": "Provider-agnostic cost gate: match model capability tier to task across Anthropic, OpenAI, and Cursor",
+  "description": "Explainable, provider-agnostic AI model router: lowest-cost capable tier, context optimization, cost/savings estimates (Anthropic, OpenAI, Cursor)",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
