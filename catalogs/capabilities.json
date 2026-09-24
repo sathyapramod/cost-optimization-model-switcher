@@ -1,0 +1,89 @@
+{
+  "version": "1",
+  "note": "Heuristic per-tier ceilings (0–5). Router (#13) picks the lowest-cost tier whose limits cover task features.",
+  "tiers": {
+    "anthropic": {
+      "premium": {
+        "reasoningDepth": 5,
+        "codeChange": 5,
+        "securityDepth": 5,
+        "bulkTextProcessing": 5,
+        "contextDependence": 5
+      },
+      "balanced": {
+        "reasoningDepth": 4,
+        "codeChange": 4,
+        "securityDepth": 3,
+        "bulkTextProcessing": 4,
+        "contextDependence": 4
+      },
+      "fast": {
+        "reasoningDepth": 2,
+        "codeChange": 2,
+        "securityDepth": 1,
+        "bulkTextProcessing": 5,
+        "contextDependence": 5
+      }
+    },
+    "openai": {
+      "premium": {
+        "reasoningDepth": 5,
+        "codeChange": 5,
+        "securityDepth": 5,
+        "bulkTextProcessing": 4,
+        "contextDependence": 5
+      },
+      "balanced": {
+        "reasoningDepth": 4,
+        "codeChange": 4,
+        "securityDepth": 3,
+        "bulkTextProcessing": 4,
+        "contextDependence": 4
+      },
+      "fast": {
+        "reasoningDepth": 2,
+        "codeChange": 2,
+        "securityDepth": 1,
+        "bulkTextProcessing": 5,
+        "contextDependence": 5
+      }
+    },
+    "cursor": {
+      "premium": {
+        "reasoningDepth": 5,
+        "codeChange": 5,
+        "securityDepth": 5,
+        "bulkTextProcessing": 5,
+        "contextDependence": 5
+      },
+      "balanced": {
+        "reasoningDepth": 4,
+        "codeChange": 4,
+        "securityDepth": 3,
+        "bulkTextProcessing": 4,
+        "contextDependence": 4
+      },
+      "fast": {
+        "reasoningDepth": 2,
+        "codeChange": 2,
+        "securityDepth": 1,
+        "bulkTextProcessing": 5,
+        "contextDependence": 5
+      }
+    }
+  },
+  "overrides": [
+    {
+      "match": "o3",
+      "provider": "openai",
+      "priority": 100,
+      "limits": { "bulkTextProcessing": 3 }
+    },
+    {
+      "match": "o1",
+      "provider": "openai",
+      "priority": 90,
+      "limits": { "bulkTextProcessing": 3, "codeChange": 4 }
+    }
+  ]
+}

@@ -51,7 +51,7 @@ The v1 gate still uses `pickUpgradeTier` / `pickDowngradeTier` in `classify.ts`;
 1. Add intent patterns in `task-analyzer.ts` (keep benchmarks green).
 2. Map new categories in `inferCategory()` and `benchmarks/fixtures.json`.
 3. Add cases to `src/test/task-analyzer.test.ts`.
-4. When profiles land (#12), compare `minimumCapability` to profile `maxTier` per model.
+4. Use `selectCapableTier(provider, analysis.features, analysis.minimumCapability)` — see [CAPABILITY_PROFILES.md](./CAPABILITY_PROFILES.md).
 
 ## Tests
 

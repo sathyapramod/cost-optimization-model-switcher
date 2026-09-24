@@ -3,10 +3,10 @@ import {
   buildScopedIngestPlan,
   buildUpgradeRationale,
   needsPremiumUpgrade,
-  pickDowngradeTier,
-  pickUpgradeTier,
   summarizeTask,
 } from "./classify.js";
+import { resolveCapabilityProfile } from "./capabilities.js";
+import { routeForTask } from "./router.js";
 import { analyzeTask } from "./task-analyzer.js";
 import {
   defaultModelForTier,
@@ -196,11 +196,14 @@ export function evaluateGate(input: GateInput): GateDecision {
     estimatedInputTokens,
   );
 
+  const capabilityProfile = resolveCapabilityProfile(resolved);
+
   const base = {
     estimatedInputTokens,
     contextBand,
     taskClass,
     taskAnalysis,
+    capabilityProfile,
     scores: { taskDifficulty, ingestComplexity },
     contextOptimization,
     primarySource,
@@ -252,13 +255,23 @@ export function evaluateGate(input: GateInput): GateDecision {
       return { action: "proceed", reason, ...base };
     }
 
-    const recommendedTier = pickDowngradeTier(input.userMessage, primarySource);
+    const routing = routeForTask({
+      resolved,
+      taskAnalysis,
+      contextBand,
+      primarySource,
+      userMessage: input.userMessage,
+      taskDifficulty,
+      switchDirection: "downgrade",
+    });
+    const recommendedTier = routing.recommendedTier;
     const confidence = confidenceFor(contextBand, estimatedInputTokens);
 
     return {
       action: "suggest_switch",
       reason: `cost-gate: downgrade→${recommendedTier}`,
       ...base,
+      routing,
       suggestSwitch: buildSwitchPayload(
         input,
         base,
@@ -267,7 +280,7 @@ export function evaluateGate(input: GateInput): GateDecision {
         recommendedTier,
         buildDowngradeRationale(
           resolved.provider,
-          recommendedTier,
+          recommendedTier as Exclude<CapabilityTier, "premium">,
           estimatedInputTokens,
           taskClass,
         ),
@@ -293,12 +306,16 @@ export function evaluateGate(input: GateInput): GateDecision {
       return { action: "proceed", reason, ...base };
     }
 
-    const recommendedTier = pickUpgradeTier(
-      resolved.tier,
-      input.userMessage,
+    const routing = routeForTask({
+      resolved,
+      taskAnalysis,
       contextBand,
+      primarySource,
+      userMessage: input.userMessage,
       taskDifficulty,
-    );
+      switchDirection: "upgrade",
+    });
+    const recommendedTier = routing.recommendedTier;
     const confidence =
       resolved.tier === "fast" && recommendedTier === "balanced"
         ? "high"
@@ -308,6 +325,7 @@ export function evaluateGate(input: GateInput): GateDecision {
       action: "suggest_switch",
       reason: `cost-gate: upgrade→${recommendedTier}`,
       ...base,
+      routing,
       suggestSwitch: buildSwitchPayload(
         input,
         base,

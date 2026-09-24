@@ -33,5 +33,7 @@ describe("V2 baseline contract", () => {
     assert.equal(decision.taskAnalysis!.taskClass, decision.taskClass);
     assert.equal(decision.taskAnalysis!.taskDifficulty, decision.scores.taskDifficulty);
     assert.equal(decision.taskAnalysis!.ingestComplexity, decision.scores.ingestComplexity);
+    assert.ok(decision.capabilityProfile);
+    assert.equal(decision.capabilityProfile!.tier, "premium");
   });
 });

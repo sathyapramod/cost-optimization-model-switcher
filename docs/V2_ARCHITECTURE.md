@@ -22,6 +22,8 @@ GateInput (model, message, probes, flags)
 |--------|----------------|
 | `src/gate.ts` | Orchestration, switch payloads |
 | `src/task-analyzer.ts` | **Day 2 (#11)** — feature-based task requirements |
+| `src/capabilities.ts` | **Day 3 (#12)** — tier capability limits + `selectCapableTier` |
+| `src/router.ts` | **Day 4 (#13)** — `routeForTask` (profiles + legacy floors) |
 | `src/classify.ts` | Tier pick helpers, rationales, scoped-ingest copy |
 | `src/classify-core.ts` | Shared ingest / source helpers (no circular imports) |
 | `src/catalog.ts` | Model ID → capability tier |
@@ -64,8 +66,8 @@ GateInput
 |-----|-------|-------------------|
 | 1 | [#10](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/10) | This doc, `v2-baseline.test.ts`, benchmark contract |
 | 2 | [#11](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/11) | `task-analyzer.ts`, [TASK_ANALYZER.md](./TASK_ANALYZER.md) |
-| 3 | [#12](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/12) | `catalogs/capabilities.json` (planned), profile loader |
-| 4 | [#13](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/13) | `router.ts` — match `minimumCapability` + profiles |
+| 3 | [#12](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/12) | `catalogs/capabilities.json`, [CAPABILITY_PROFILES.md](./CAPABILITY_PROFILES.md) |
+| 4 | [#13](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/13) | `router.ts`, [ROUTING.md](./ROUTING.md) |
 | 5 | [#14](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/14) | Confidence thresholds, explicit proceed on low confidence |
 | 6–7 | [#15](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/15)–[#16](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/16) | Benchmark + adversarial suites |
 | 8–12 | [#17](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/17)–[#21](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/21) | Context, cost, policy, explain, CLI UX |

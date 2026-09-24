@@ -1,5 +1,24 @@
 export { evaluateGate } from "./gate.js";
 export {
+  currentModelMeetsTask,
+  higherTier,
+  limitsForTier,
+  loadDefaultCapabilities,
+  mergeCapabilities,
+  profileMeetsFeatures,
+  resolveCapabilityProfile,
+  selectCapableTier,
+  tierMeetsMinimum,
+} from "./capabilities.js";
+export { loadRoutingCapabilities, routeForTask } from "./router.js";
+export type { RouteInput, RoutingDecision } from "./router.js";
+export type {
+  CapabilityCatalog,
+  CapabilityLimits,
+  CapabilityOverride,
+  ModelCapabilityProfile,
+} from "./capabilities.js";
+export {
   analyzeTask,
   hasDeepSignals,
   minimumCapabilityForAnalysis,
