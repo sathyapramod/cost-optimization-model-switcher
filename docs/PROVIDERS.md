@@ -1,5 +1,9 @@
 # Provider-agnostic model catalog
 
+**When to read this:** You use Cursor or OpenAI slugs, ship a custom model list, or call `evaluateGate` from code.
+
+**Back:** [README](../README.md) · [Docs index](./README.md)
+
 The gate does **not** hardcode Opus/Sonnet/Haiku or GPT model names. It resolves any model ID to:
 
 | Concept | Values | Meaning |

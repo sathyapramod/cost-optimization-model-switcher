@@ -1,5 +1,9 @@
 # Integration example
 
+Wire the gate into a host app, CI step, or custom agent. You need Node 20+, `npm install`, `npm run build`, and for HTTP examples `npm run proxy`.
+
+**Related:** [README](../README.md) (CLI) · [PROVIDERS.md](../docs/PROVIDERS.md) (catalog) · [schemas/suggest_model_switch.json](../schemas/suggest_model_switch.json)
+
 ## 1. Gate before the model turn
 
 ```bash

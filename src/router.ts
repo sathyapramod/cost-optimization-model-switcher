@@ -14,6 +14,8 @@ import type { CapabilityTier, ContextBand, ContextSource } from "./types.js";
 export interface RoutingDecision {
   /** Lowest-cost tier whose profile covers task features (null if none). */
   capableTier: CapabilityTier | null;
+  /** Tier from v1 pickDowngrade / pickUpgrade heuristics only. */
+  legacyTier: CapabilityTier;
   /** Tier to recommend after merging capability match with legacy heuristics. */
   recommendedTier: CapabilityTier;
   currentMeetsTask: boolean;
@@ -45,7 +47,7 @@ function legacyRecommendedTier(
 
 /**
  * Capability-matching router (#13): `selectCapableTier` + v1 tier heuristics (max rank)
- * so benchmark fixtures and PR-review nuance stay aligned until confidence (#14).
+ * so benchmark fixtures and PR-review nuance stay aligned; see routing-confidence (#14).
  */
 export function routeForTask(input: RouteInput): RoutingDecision {
   const caps = input.capabilities ?? loadDefaultCapabilities();
@@ -62,6 +64,7 @@ export function routeForTask(input: RouteInput): RoutingDecision {
 
   return {
     capableTier,
+    legacyTier,
     recommendedTier,
     currentMeetsTask: currentModelMeetsTask(input.resolved, input.taskAnalysis.features, caps),
   };

@@ -1,5 +1,9 @@
 # Context optimization (scoped ingest)
 
+**When to read this:** Large logs/PRs trigger scoped-ingest plans and different cost fields on switch payloads.
+
+**Back:** [Docs index](./README.md) · [SKILL.md](../SKILL.md) (agent behavior)
+
 Issue [#5](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/5): reduce **what you ingest** before (or instead of) switching models.
 
 ## Flow

@@ -1,5 +1,9 @@
 # Task vs ingest scoring (v1)
 
+**When to read this:** You want to know why the gate upgraded or downgraded a tier from message text vs probe size.
+
+**Back:** [Docs index](./README.md) · [TASK_ANALYZER.md](./TASK_ANALYZER.md) (V2 structured analysis)
+
 Issue [#4](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/4): routing uses **two 0–5 scores** instead of mixing context size into task difficulty.
 
 | Score | Source | Meaning |

@@ -1,5 +1,9 @@
 # Benchmarks
 
+**When to read this:** You change routing heuristics or fixtures and need CI-style regression checks.
+
+**Back:** [Docs index](./README.md) · [V2_ARCHITECTURE.md](./V2_ARCHITECTURE.md) (baseline contract)
+
 Issue [#6](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/6): measure **router correctness** and **cost per successful task** (heuristic).
 
 ## Two layers

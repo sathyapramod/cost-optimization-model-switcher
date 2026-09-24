@@ -1,5 +1,9 @@
 # Routing engine (V2 Day 4 — #13)
 
+**When to read this:** You debug `GateDecision.routing` or change `routeForTask`.
+
+**Back:** [Docs index](./README.md) · [ROUTING_CONFIDENCE.md](./ROUTING_CONFIDENCE.md)
+
 **Module:** `src/router.ts`  
 **Entry:** `routeForTask()` — used by `evaluateGate()` when suggesting a switch.
 
@@ -50,6 +54,6 @@ npm test -- --test-name-pattern=routeForTask
 npm run benchmark
 ```
 
-## Next (#14)
+## Confidence (#14)
 
-Add confidence thresholds and **proceed** (no-op) when `capableTier` is ambiguous or `currentMeetsTask` is true on a higher tier than `capableTier` suggests.
+After `routeForTask()`, `evaluateRoutingConfidence()` may **no-op** (proceed) — see [ROUTING_CONFIDENCE.md](./ROUTING_CONFIDENCE.md).

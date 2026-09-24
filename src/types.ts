@@ -121,6 +121,8 @@ export interface GateDecision {
   capabilityProfile?: import("./capabilities.js").ModelCapabilityProfile;
   /** V2 capability router output (#13). */
   routing?: import("./router.js").RoutingDecision;
+  /** V2 routing confidence + no-op (#14). */
+  routingConfidence?: import("./routing-confidence.js").RoutingConfidenceResult;
   scores: GateScores;
   contextOptimization: ContextOptimization;
   primarySource: ContextSource;

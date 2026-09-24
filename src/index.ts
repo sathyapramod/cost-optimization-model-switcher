@@ -12,6 +12,11 @@ export {
 } from "./capabilities.js";
 export { loadRoutingCapabilities, routeForTask } from "./router.js";
 export type { RouteInput, RoutingDecision } from "./router.js";
+export { evaluateRoutingConfidence } from "./routing-confidence.js";
+export type {
+  RoutingConfidenceInput,
+  RoutingConfidenceResult,
+} from "./routing-confidence.js";
 export type {
   CapabilityCatalog,
   CapabilityLimits,

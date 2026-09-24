@@ -1,5 +1,9 @@
 # Task analyzer (V2 Day 2 — #11)
 
+**When to read this:** You use `GateDecision.taskAnalysis` or extend intent patterns.
+
+**Back:** [Docs index](./README.md) · [SCORING.md](./SCORING.md) (v1 scores)
+
 **Entry point:** `analyzeTask()` in `src/task-analyzer.ts`
 
 Turns the user message and optional context probes into **feature-based task requirements** used by the gate today and by the routing engine ([#13](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/13)) next.

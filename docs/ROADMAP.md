@@ -1,5 +1,9 @@
 # Roadmap
 
+**When to read this:** You want shipped vs planned capabilities and GitHub issue links.
+
+**Back:** [README](../README.md) · [Docs index](./README.md)
+
 Evolve **cost-optimization-model-switcher** from a model **recommendation** gate into a **routing + cost optimization** engine: route where the host allows, execute, observe outcomes, and escalate when the tier was insufficient.
 
 **Epic (GitHub):** [#2 — Model routing + cost optimization engine](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/2)

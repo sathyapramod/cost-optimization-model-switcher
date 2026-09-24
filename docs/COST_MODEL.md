@@ -1,5 +1,9 @@
 # Cost model (heuristic)
 
+**When to read this:** You interpret `estimated_*_usd` or `savings_percent` on CLI `--json` or `suggest_switch`.
+
+**Back:** [Docs index](./README.md) · Edit prices in `catalogs/pricing.json`
+
 Issue [#3](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/3): gate decisions can include **estimated USD** for the current vs recommended model on a **single turn**.
 
 This is **not** billing data. It uses:

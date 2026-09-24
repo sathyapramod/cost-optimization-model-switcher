@@ -1,5 +1,9 @@
 # Model capability profiles (V2 Day 3 — #12)
 
+**When to read this:** You tune `catalogs/capabilities.json` or call `selectCapableTier`.
+
+**Back:** [Docs index](./README.md) · [ROUTING.md](./ROUTING.md)
+
 **Data:** `catalogs/capabilities.json`  
 **API:** `src/capabilities.ts`
 

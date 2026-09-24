@@ -6,6 +6,7 @@ import {
   summarizeTask,
 } from "./classify.js";
 import { resolveCapabilityProfile } from "./capabilities.js";
+import { evaluateRoutingConfidence } from "./routing-confidence.js";
 import { routeForTask } from "./router.js";
 import { analyzeTask } from "./task-analyzer.js";
 import {
@@ -33,12 +34,6 @@ import type {
   SuggestModelSwitchInput,
   TaskClass,
 } from "./types.js";
-
-function confidenceFor(band: GateDecision["contextBand"], tokens: number): Confidence {
-  if (band === "large" && tokens > 0) return "high";
-  if (band === "medium" && tokens > 0) return "medium";
-  return "low";
-}
 
 function shouldDowngrade(
   band: GateDecision["contextBand"],
@@ -264,14 +259,31 @@ export function evaluateGate(input: GateInput): GateDecision {
       taskDifficulty,
       switchDirection: "downgrade",
     });
+    const routingConfidence = evaluateRoutingConfidence({
+      resolved,
+      routing,
+      taskAnalysis,
+      contextBand,
+      estimatedInputTokens,
+      switchDirection: "downgrade",
+    });
+    if (!routingConfidence.suggestSwitch) {
+      return {
+        action: "proceed",
+        reason: `cost-gate: no-op (${routingConfidence.noOpReason ?? "low routing confidence"})`,
+        ...base,
+        routing,
+        routingConfidence,
+      };
+    }
     const recommendedTier = routing.recommendedTier;
-    const confidence = confidenceFor(contextBand, estimatedInputTokens);
 
     return {
       action: "suggest_switch",
       reason: `cost-gate: downgrade→${recommendedTier}`,
       ...base,
       routing,
+      routingConfidence,
       suggestSwitch: buildSwitchPayload(
         input,
         base,
@@ -284,7 +296,7 @@ export function evaluateGate(input: GateInput): GateDecision {
           estimatedInputTokens,
           taskClass,
         ),
-        confidence,
+        routingConfidence.confidence,
       ),
     };
   }
@@ -315,17 +327,35 @@ export function evaluateGate(input: GateInput): GateDecision {
       taskDifficulty,
       switchDirection: "upgrade",
     });
+    const routingConfidence = evaluateRoutingConfidence({
+      resolved,
+      routing,
+      taskAnalysis,
+      contextBand,
+      estimatedInputTokens,
+      switchDirection: "upgrade",
+    });
+    if (!routingConfidence.suggestSwitch) {
+      return {
+        action: "proceed",
+        reason: `cost-gate: no-op (${routingConfidence.noOpReason ?? "low routing confidence"})`,
+        ...base,
+        routing,
+        routingConfidence,
+      };
+    }
     const recommendedTier = routing.recommendedTier;
-    const confidence =
-      resolved.tier === "fast" && recommendedTier === "balanced"
-        ? "high"
-        : confidenceFor(contextBand, estimatedInputTokens);
+    let confidence = routingConfidence.confidence;
+    if (resolved.tier === "fast" && recommendedTier === "balanced" && confidence !== "high") {
+      confidence = "high";
+    }
 
     return {
       action: "suggest_switch",
       reason: `cost-gate: upgrade→${recommendedTier}`,
       ...base,
       routing,
+      routingConfidence,
       suggestSwitch: buildSwitchPayload(
         input,
         base,
