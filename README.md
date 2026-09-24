@@ -1,8 +1,8 @@
 # Cost Optimization & Model Switcher
 
-Stop using expensive models for cheap work — and stop using fast models for hard work.
+An explainable, provider-agnostic **AI model router** that selects the lowest-cost model capable of completing a task, while optimizing context and exposing estimated cost and savings.
 
-This project is an **agent skill + small library** that checks your task **before** the AI ingests large context (PRs, Jira boards, logs, dumps). It recommends switching to a better-matched model tier:
+Shipped as an **agent skill + small library**: it evaluates your task **before** the AI ingests large context (PRs, Jira boards, logs, dumps) and routes to a better-matched capability tier when the current model is over- or under-powered:
 
 | Direction | When | Example |
 |-----------|------|---------|
@@ -365,6 +365,8 @@ MIT — see [LICENSE](LICENSE)
 - [Task vs ingest scoring](docs/SCORING.md)
 - [Context optimization (scoped ingest)](docs/CONTEXT_OPTIMIZATION.md)
 - [Roadmap](docs/ROADMAP.md)
+- [V2 architecture](docs/V2_ARCHITECTURE.md)
+- [Task analyzer (V2)](docs/TASK_ANALYZER.md)
 - [Benchmarks](docs/BENCHMARKS.md)
 - [Example tool call](examples/tool-call.json)
 - [Integration examples](examples/integration.md)

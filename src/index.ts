@@ -1,5 +1,18 @@
 export { evaluateGate } from "./gate.js";
 export {
+  analyzeTask,
+  hasDeepSignals,
+  minimumCapabilityForAnalysis,
+  scoreTaskDifficultyFromMessage,
+} from "./task-analyzer.js";
+export type {
+  TaskAnalysis,
+  TaskAnalyzerInput,
+  TaskCategory,
+  TaskFeatureVector,
+  TaskIntent,
+} from "./task-analyzer.js";
+export {
   assertBenchmarkExpectations,
   benchmarkFixture,
   formatBenchmarkMarkdown,
@@ -54,7 +67,6 @@ export {
   buildScopedIngestPlan,
   buildUpgradeRationale,
   classifyTask,
-  hasDeepSignals,
   needsPremiumUpgrade,
   pickDowngradeTier,
   pickUpgradeTier,

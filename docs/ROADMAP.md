@@ -4,6 +4,8 @@ Evolve **cost-optimization-model-switcher** from a model **recommendation** gate
 
 **Epic (GitHub):** [#2 — Model routing + cost optimization engine](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/2)
 
+**V2 epic:** [#9 — 15-day capability routing](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/9) — architecture in [V2_ARCHITECTURE.md](./V2_ARCHITECTURE.md). Start at [#10](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/10), then [#11](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/11)–[#16](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/16), P1 [#17](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/17)–[#21](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/21), P2 [#22](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/22)–[#23](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/23), release [#24](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/24).
+
 ---
 
 ## Where we are today
