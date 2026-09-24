@@ -1,0 +1,121 @@
+{
+  "version": "1",
+  "provider": "anthropic",
+  "note": "False-positive = must NOT suggest_switch when switch would be wrong/noisy. False-negative = MUST suggest_switch.",
+  "cases": [
+    {
+      "id": "fp-opus-small-straightforward",
+      "kind": "false_positive",
+      "description": "Premium + small context: do not downgrade",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Summarize this short paste",
+      "probes": [{ "source": "paste", "bytes": 4000 }],
+      "expect": { "action": "proceed" }
+    },
+    {
+      "id": "fp-opus-complex-architecture",
+      "kind": "false_positive",
+      "description": "Premium + complex migration: stay",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Design auth migration from this database dump",
+      "probes": [{ "source": "database_dump", "bytes": 2000000 }],
+      "expect": { "action": "proceed" }
+    },
+    {
+      "id": "fp-sonnet-small-debug",
+      "kind": "false_positive",
+      "description": "Sonnet + small complex fix: within tier",
+      "currentModel": "claude-sonnet-4-6",
+      "userMessage": "Fix the race condition in this 100-line concurrency module",
+      "probes": [{ "source": "paste", "bytes": 8000 }],
+      "expect": { "action": "proceed" }
+    },
+    {
+      "id": "fp-user-opt-out",
+      "kind": "false_positive",
+      "description": "User opted out: never switch",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Summarize this 2MB CI log",
+      "probes": [{ "source": "log_file", "bytes": 2000000 }],
+      "userOptedOut": true,
+      "expect": { "action": "proceed" }
+    },
+    {
+      "id": "fp-sonnet-straightforward-large",
+      "kind": "false_positive",
+      "description": "Balanced tier + straightforward bulk: already cheap enough",
+      "currentModel": "claude-sonnet-4-6",
+      "userMessage": "Summarize this 2MB CI log",
+      "probes": [{ "source": "log_file", "bytes": 2000000 }],
+      "expect": { "action": "proceed" }
+    },
+    {
+      "id": "fp-opus-mixed-intent-complex",
+      "kind": "false_positive",
+      "description": "Mixed signals on premium: stay (complex)",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Review PR diff and implement the fix for the race",
+      "probes": [
+        { "source": "github_pr", "additions": 2000, "deletions": 600, "changedFiles": 22 }
+      ],
+      "expect": { "action": "proceed" }
+    },
+    {
+      "id": "fn-opus-large-log",
+      "kind": "false_negative",
+      "description": "Premium + large log summarize: downgrade to fast",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Summarize this 2MB CI log and list errors only",
+      "probes": [{ "source": "log_file", "bytes": 2000000 }],
+      "expect": { "action": "suggest_switch", "recommendedTier": "fast" }
+    },
+    {
+      "id": "fn-haiku-implement",
+      "kind": "false_negative",
+      "description": "Haiku + implement: upgrade to balanced",
+      "currentModel": "claude-haiku-4-5",
+      "userMessage": "Implement a new Backstage plugin for Git repo registration with tests",
+      "expect": { "action": "suggest_switch", "recommendedTier": "balanced" }
+    },
+    {
+      "id": "fn-haiku-migration",
+      "kind": "false_negative",
+      "description": "Haiku + deep migration: upgrade to premium",
+      "currentModel": "claude-haiku-4-5",
+      "userMessage": "Design auth migration from this database dump",
+      "probes": [{ "source": "database_dump", "bytes": 500000 }],
+      "expect": { "action": "suggest_switch", "recommendedTier": "premium" }
+    },
+    {
+      "id": "fn-sonnet-security",
+      "kind": "false_negative",
+      "description": "Sonnet + security audit: upgrade to premium",
+      "currentModel": "claude-sonnet-4-6",
+      "userMessage": "Run a security audit on this API surface and explain exploit paths",
+      "probes": [
+        { "source": "github_pr", "additions": 800, "deletions": 200, "changedFiles": 12 }
+      ],
+      "expect": { "action": "suggest_switch", "recommendedTier": "premium" }
+    },
+    {
+      "id": "fn-opus-pr-review",
+      "kind": "false_negative",
+      "description": "Premium + PR bug list: downgrade to balanced",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Review PR #482 diff and list potential bugs",
+      "probes": [
+        { "source": "github_pr", "additions": 1200, "deletions": 400, "changedFiles": 18 }
+      ],
+      "expect": { "action": "suggest_switch", "recommendedTier": "balanced" }
+    },
+    {
+      "id": "fn-haiku-refactor",
+      "kind": "false_negative",
+      "description": "Haiku + refactor: upgrade to balanced",
+      "currentModel": "claude-haiku-4-5",
+      "userMessage": "Refactor the gate module for clarity and add tests",
+      "probes": [{ "source": "paste", "bytes": 40000 }],
+      "expect": { "action": "suggest_switch", "recommendedTier": "balanced" }
+    }
+  ]
+}

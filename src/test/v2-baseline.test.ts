@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-  assertBenchmarkExpectations,
-  loadFixtureSuite,
-  runBenchmarkSuite,
-} from "../benchmark.js";
+import { loadFixtureSuite } from "../benchmark.js";
+import { assertEvaluation, runEvaluation } from "../evaluation.js";
 import { defaultModelForTier, loadDefaultCatalog } from "../catalog.js";
 import { evaluateGate } from "../gate.js";
 
@@ -13,8 +10,8 @@ import { evaluateGate } from "../gate.js";
  * Update only with intentional router changes (document in docs/V2_ARCHITECTURE.md).
  */
 describe("V2 baseline contract", () => {
-  it("benchmark fixtures meet all gate expectations", () => {
-    assertBenchmarkExpectations(runBenchmarkSuite());
+  it("evaluation suite passes (benchmark + adversarial)", () => {
+    assertEvaluation(runEvaluation());
   });
 
   it("every evaluateGate decision includes taskAnalysis aligned with scores", () => {

@@ -37,9 +37,30 @@ export type {
   TaskIntent,
 } from "./task-analyzer.js";
 export {
+  assertAdversarialSuite,
+  formatAdversarialMarkdown,
+  loadAdversarialSuite,
+  runAdversarialCase,
+  runAdversarialSuite,
+} from "./adversarial.js";
+export type {
+  AdversarialCase,
+  AdversarialCaseResult,
+  AdversarialKind,
+  AdversarialReport,
+  AdversarialSuite,
+} from "./adversarial.js";
+export {
+  assertEvaluation,
+  formatEvaluationMarkdown,
+  runEvaluation,
+} from "./evaluation.js";
+export type { EvaluationReport, RunEvaluationOptions } from "./evaluation.js";
+export {
   assertBenchmarkExpectations,
   benchmarkFixture,
   formatBenchmarkMarkdown,
+  gateExpectationMet,
   loadFixtureSuite,
   loadSuccessRates,
   runBenchmarkSuite,

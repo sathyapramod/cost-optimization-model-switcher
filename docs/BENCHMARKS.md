@@ -6,11 +6,12 @@
 
 Issue [#6](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/6): measure **router correctness** and **cost per successful task** (heuristic).
 
-## Two layers
+## Layers
 
 | Layer | What it measures | How to run |
 |-------|------------------|------------|
-| **Router (CI)** | Gate action + tier per fixture × starting tier | `npm run benchmark` |
+| **Full evaluation (CI)** | Regression fixtures + adversarial cases | `npm run evaluate` — see [EVALUATION.md](./EVALUATION.md) |
+| **Regression only** | Gate action + tier per fixture × starting tier | `npm run benchmark` |
 | **Live quality (optional)** | Real success, latency, tokens | Record runs in `benchmarks/live-results.json` (schema provided) |
 
 Router benchmarks do **not** call LLM APIs. They use `evaluateGate`, `catalogs/pricing.json`, and assumed success rates in `benchmarks/success-rates.json`.

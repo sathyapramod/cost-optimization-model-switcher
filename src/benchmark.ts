@@ -133,7 +133,7 @@ function successRateFor(
   return rate;
 }
 
-function checkExpectation(
+export function gateExpectationMet(
   decision: GateDecision,
   expect: FixtureExpectation | undefined,
 ): boolean | null {
@@ -183,7 +183,7 @@ export function benchmarkFixture(
       inputTokensUsed: tokens,
       assumedSuccessRate: rate,
       costPerSuccessfulTaskUsd: cost / rate,
-      expectationMet: checkExpectation(decision, expect),
+      expectationMet: gateExpectationMet(decision, expect),
     });
   }
 

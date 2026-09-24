@@ -30,7 +30,8 @@
     "gate": "node dist/cli.js",
     "proxy": "node dist/proxy.js",
     "validate-skill": "node scripts/validate-skill.mjs",
-    "benchmark": "npm run build && node scripts/run-benchmarks.mjs"
+    "benchmark": "npm run build && node scripts/run-benchmarks.mjs",
+    "evaluate": "npm run build && node scripts/run-evaluation.mjs"
   },
   "keywords": [
     "claude",
