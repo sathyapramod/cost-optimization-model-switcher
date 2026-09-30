@@ -3,7 +3,14 @@ import { buildSwitchCostEstimate } from "../cost.js";
 import { analyzeTask } from "../task-analyzer.js";
 import { buildTaskSuccessSpecification } from "../success-criteria.js";
 import { resolveSuccessSpecId } from "../task-contract.js";
-import type { EvaluableCriterion, EvaluationResult, TaskCase, TaskQualityReport } from "./types.js";
+import type {
+  BenchmarkDomain,
+  EvaluableCriterion,
+  EvaluationResult,
+  ModelDomainBenchmarkStats,
+  TaskCase,
+  TaskQualityReport,
+} from "./types.js";
 import { loadTaskQualityFixtures } from "./fixtures.js";
 import {
   TASK_CONTRACT_EVALUATOR_ID,
@@ -110,6 +117,64 @@ export interface RunTaskQualityOptions {
   fixturesPath?: string;
 }
 
+function aggregateByModelDomain(
+  cases: { domain?: BenchmarkDomain; results: EvaluationResult[] }[],
+): ModelDomainBenchmarkStats[] {
+  const buckets = new Map<
+    string,
+    {
+      modelId: string;
+      provider: EvaluationResult["provider"];
+      domain: BenchmarkDomain;
+      qualities: number[];
+      costs: number[];
+      latencies: number[];
+      passCount: number;
+      caseCount: number;
+    }
+  >();
+
+  for (const c of cases) {
+    if (!c.domain) continue;
+    const domain = c.domain;
+    for (const r of c.results) {
+      const key = `${domain}:${r.provider}:${r.model}`;
+      const bucket =
+        buckets.get(key) ??
+        {
+          modelId: r.model,
+          provider: r.provider,
+          domain,
+          qualities: [],
+          costs: [],
+          latencies: [],
+          passCount: 0,
+          caseCount: 0,
+        };
+      bucket.qualities.push(r.qualityScore);
+      bucket.costs.push(r.estimatedCostUsd);
+      bucket.latencies.push(r.latencyMs);
+      bucket.caseCount++;
+      if (r.passed) bucket.passCount++;
+      buckets.set(key, bucket);
+    }
+  }
+
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+
+  return [...buckets.values()].map((b) => ({
+    modelId: b.modelId,
+    provider: b.provider,
+    domain: b.domain,
+    caseCount: b.caseCount,
+    passCount: b.passCount,
+    failureRate: b.caseCount ? 1 - b.passCount / b.caseCount : 0,
+    meanQuality: Math.round(mean(b.qualities) * 1000) / 1000,
+    meanCostUsd: Math.round(mean(b.costs) * 1_000_000) / 1_000_000,
+    meanLatencyMs: Math.round(mean(b.latencies)),
+  }));
+}
+
 export function runTaskQualityEvaluation(
   options?: RunTaskQualityOptions,
 ): TaskQualityReport {
@@ -117,6 +182,7 @@ export function runTaskQualityEvaluation(
   const cases = suite.cases.map((taskCase) => ({
     caseId: taskCase.id,
     category: taskCase.category,
+    domain: taskCase.domain,
     results: evaluateTaskCase(taskCase),
   }));
 
@@ -131,6 +197,8 @@ export function runTaskQualityEvaluation(
     }
   }
 
+  const byModelDomain = aggregateByModelDomain(cases);
+
   return {
     generatedAt: new Date().toISOString(),
     frameworkVersion: TASK_QUALITY_FRAMEWORK_VERSION,
@@ -141,6 +209,7 @@ export function runTaskQualityEvaluation(
       resultCount,
       passed,
       failed,
+      byModelDomain,
     },
   };
 }
@@ -156,7 +225,22 @@ export function formatTaskQualityMarkdown(report: TaskQualityReport): string {
     "",
     `Cases: ${report.summary.caseCount} | Results: ${report.summary.resultCount} | Passed: ${report.summary.passed} | Failed: ${report.summary.failed}`,
     "",
+    "## Model comparison by task domain",
+    "",
+    "Purpose: for each task class, what quality can each model reliably achieve on recorded outputs (not universal ranking).",
+    "",
+    "| Domain | Model | Cases | Pass | Failure rate | Mean quality | Mean latency ms | Mean est. $ |",
+    "|--------|-------|-------|------|--------------|--------------|-----------------|-------------|",
   ];
+
+  for (const row of report.summary.byModelDomain.sort(
+    (a, b) => a.domain.localeCompare(b.domain) || a.modelId.localeCompare(b.modelId),
+  )) {
+    lines.push(
+      `| ${row.domain} | ${row.modelId} | ${row.caseCount} | ${row.passCount} | ${(row.failureRate * 100).toFixed(0)}% | ${row.meanQuality} | ${row.meanLatencyMs} | ${row.meanCostUsd.toFixed(4)} |`,
+    );
+  }
+  lines.push("");
 
   for (const c of report.cases) {
     lines.push(`## ${c.caseId} (${c.category})`);

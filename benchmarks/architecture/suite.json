@@ -1,0 +1,206 @@
+{
+  "version": "1",
+  "domain": "architecture",
+  "description": "Design reviews scored against requirements, scalability, reliability, failure modes, security, and trade-offs.",
+  "cases": [
+    {
+      "id": "arch-auth-migration",
+      "task": "Design auth migration from legacy sessions to JWT",
+      "taskType": "architecture",
+      "context": { "description": "Dual-run period required; mobile clients on sessions" },
+      "requirements": { "architecture": 5, "reasoning": 4 },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Coexistence plan, trade-offs, failure/rollback, security of tokens" },
+      "successCriteria": [
+        {
+          "id": "requirements",
+          "description": "Requirements / coexistence",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["JWT", "session"] }
+        },
+        {
+          "id": "scalability",
+          "description": "Scalability note",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["scale", "throughput", "shard", "load"] }
+        },
+        {
+          "id": "reliability",
+          "description": "Reliability",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["availability", "failover", "degrade", "SLO"] }
+        },
+        {
+          "id": "failure_modes",
+          "description": "Failure modes",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["rollback", "revocation", "failure mode"] }
+        },
+        {
+          "id": "security",
+          "description": "Security",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["TTL", "rotate", "key", "compromise"] }
+        },
+        {
+          "id": "tradeoffs",
+          "description": "Trade-offs",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["tradeoff", "trade-off"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-opus-4-6",
+          "provider": "anthropic",
+          "latencyMs": 3200,
+          "inputTokens": 3000,
+          "outputTokens": 1100,
+          "output": "Phase 1 runs dual session + JWT validation. Trade-off: higher latency vs safer cutover. Scale: stateless JWT validators behind LB. Reliability: degrade to session-only if JWKS fetch fails (SLO). Failure mode: stale JWT after revocation — short TTL + denylist. Rollback keeps session cookies 48h. Security: rotate signing keys on compromise.\n"
+        },
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2200,
+          "inputTokens": 3000,
+          "outputTokens": 400,
+          "output": "Switch everyone to JWT tomorrow and delete sessions.\n"
+        }
+      ]
+    },
+    {
+      "id": "arch-cache-tier",
+      "task": "Design a caching layer for read-heavy product catalog",
+      "taskType": "architecture",
+      "context": { "description": "10k RPS reads; occasional stale price acceptable 60s" },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Cache strategy, invalidation, failure if cache down" },
+      "successCriteria": [
+        {
+          "id": "requirements",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["catalog", "read"] }
+        },
+        {
+          "id": "scalability",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["RPS", "shard", "replica", "CDN"] }
+        },
+        {
+          "id": "reliability",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["cache miss", "fallback", "origin"] }
+        },
+        {
+          "id": "failure_modes",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["stampede", "thundering herd", "evict", "TTL"] }
+        },
+        {
+          "id": "security",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["auth", "tenant", "PII", "encrypt"] }
+        },
+        {
+          "id": "tradeoffs",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["tradeoff", "trade-off", "staleness"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-opus-4-6",
+          "provider": "anthropic",
+          "latencyMs": 3000,
+          "inputTokens": 2800,
+          "outputTokens": 1000,
+          "output": "Edge CDN + regional Redis for catalog reads (10k RPS). Trade-off: 60s price staleness vs load on origin. Reliability: on cache miss, fall back to DB with timeout. Failure: thundering herd — use request coalescing. Security: no PII in cache keys; encrypt tenant namespaces.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 1100,
+          "inputTokens": 2800,
+          "outputTokens": 80,
+          "output": "Add a cache.\n"
+        }
+      ]
+    },
+    {
+      "id": "arch-multi-region",
+      "task": "Propose multi-region active-active for order service",
+      "taskType": "architecture",
+      "context": { "description": "RPO 5 min; orders must not double-charge" },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Replication, split-brain, idempotency, trade-offs" },
+      "successCriteria": [
+        {
+          "id": "requirements",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["order", "region"] }
+        },
+        {
+          "id": "scalability",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["partition", "scale", "traffic"] }
+        },
+        {
+          "id": "reliability",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["RPO", "replicat", "failover"] }
+        },
+        {
+          "id": "failure_modes",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["split-brain", "duplicate", "idempot"] }
+        },
+        {
+          "id": "security",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["TLS", "mTLS", "fraud"] }
+        },
+        {
+          "id": "tradeoffs",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["tradeoff", "trade-off", "latency"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-opus-4-6",
+          "provider": "anthropic",
+          "latencyMs": 3400,
+          "inputTokens": 3200,
+          "outputTokens": 1200,
+          "output": "Active-active order API per region with async replication (RPO 5m). Idempotency keys prevent double-charge on failover. Trade-off: cross-region latency vs local writes. Failure: split-brain — use leader per shard + fencing tokens. Security: mTLS between regions; fraud checks at payment edge.\n"
+        },
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2000,
+          "inputTokens": 3200,
+          "outputTokens": 350,
+          "output": "Deploy two regions and load-balance randomly.\n"
+        }
+      ]
+    }
+  ]
+}

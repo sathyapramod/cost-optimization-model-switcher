@@ -25,9 +25,16 @@ function countBulletLines(text: string): number {
   return text.split("\n").filter((l) => /^\s*[-*•]\s+/.test(l)).length;
 }
 
+function extractJsonPayload(output: string): unknown {
+  const fenced = output.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const raw = (fenced?.[1] ?? output).trim();
+  return JSON.parse(raw);
+}
+
 function runDeterministicCheck(
   check: string,
   output: string,
+  spec: EvaluableCriterion["spec"] = {},
 ): { passed: boolean; score: number; details: string } {
   switch (check) {
     case "non_empty":
@@ -36,9 +43,78 @@ function runDeterministicCheck(
         score: output.trim().length > 0 ? 1 : 0,
         details: "output must be non-empty",
       };
-    case "has_code_fence":
+    case "has_code_fence": {
       const has = /```[\s\S]*?```/.test(output);
       return { passed: has, score: has ? 1 : 0, details: "expects fenced code block" };
+    }
+    case "structured_json": {
+      try {
+        const parsed = extractJsonPayload(output) as Record<string, unknown>;
+        const missing = (spec.requiredKeys ?? []).filter((k) => !(k in parsed));
+        if (missing.length) {
+          return {
+            passed: false,
+            score: 0,
+            details: `JSON missing keys: ${missing.join(", ")}`,
+          };
+        }
+        const itemKeys = spec.itemKeys ?? [];
+        if (itemKeys.length) {
+          const firstArray = Object.values(parsed).find((v) => Array.isArray(v)) as
+            | Record<string, unknown>[]
+            | undefined;
+          if (!firstArray?.length) {
+            return { passed: false, score: 0, details: "expected a non-empty JSON array" };
+          }
+          const bad = firstArray.find((item) =>
+            itemKeys.some((k) => !(k in item)),
+          );
+          if (bad) {
+            return {
+              passed: false,
+              score: 0,
+              details: `array items missing keys: ${itemKeys.join(", ")}`,
+            };
+          }
+        }
+        return { passed: true, score: 1, details: "valid structured JSON" };
+      } catch (e) {
+        return {
+          passed: false,
+          score: 0,
+          details: `invalid JSON: ${e instanceof Error ? e.message : String(e)}`,
+        };
+      }
+    }
+    case "exports_named_function": {
+      const name = spec.functionName ?? "";
+      const codeMatch = output.match(/```[\s\S]*?```/);
+      const code = codeMatch?.[0] ?? output;
+      const found = new RegExp(
+        `(export\\s+)?(async\\s+)?function\\s+${name}\\b|const\\s+${name}\\s*=`,
+      ).test(code);
+      return {
+        passed: found,
+        score: found ? 1 : 0,
+        details: found ? `exports ${name}` : `missing function ${name}`,
+      };
+    }
+    case "embedded_test_assertions": {
+      const patterns = spec.testPatterns ?? [];
+      if (!patterns.length) {
+        return { passed: false, score: 0, details: "no testPatterns configured" };
+      }
+      const hits = patterns.filter((p) => new RegExp(p, "i").test(output)).length;
+      const score = hits / patterns.length;
+      return {
+        passed: score >= 1,
+        score,
+        details:
+          score >= 1
+            ? "all test assertion patterns present"
+            : `missing test patterns (${hits}/${patterns.length})`,
+      };
+    }
     default:
       return { passed: false, score: 0, details: `unknown deterministic check: ${check}` };
   }
@@ -71,7 +147,7 @@ function evaluateOne(criterion: EvaluableCriterion, output: string): CriterionEv
   }
 
   if (criterion.type === "deterministic" && spec.check) {
-    const r = runDeterministicCheck(spec.check, output);
+    const r = runDeterministicCheck(spec.check, output, spec);
     return { ...base, passed: r.passed, score: r.score, details: r.details };
   }
 

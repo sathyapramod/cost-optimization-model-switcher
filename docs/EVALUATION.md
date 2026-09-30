@@ -10,7 +10,7 @@
 |-------|-------|------|---------|
 | **Regression** | #15 | `benchmarks/fixtures.json` | Cost/success + `expectByTier` gate contract |
 | **Adversarial** | #16 | `benchmarks/adversarial.json` | False-positive / false-negative routing traps |
-| **Task quality (Phase 5)** | — | `benchmarks/task-quality/fixtures.json` | Criterion-level pass/fail on recorded outputs |
+| **Task quality (Phase 5+)** | — | `benchmarks/<domain>/suite.json` | Criterion-level pass/fail on recorded outputs per task class |
 
 Router regression runs through `runEvaluation()` in `src/evaluation.ts`.
 

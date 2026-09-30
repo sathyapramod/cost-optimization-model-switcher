@@ -9,7 +9,11 @@ export type {
   TaskQualityFixtureSuite,
   TaskQualityReport,
 } from "./types.js";
-export { loadTaskQualityFixtures } from "./fixtures.js";
+export { loadTaskQualityFixtures, resetTaskQualityFixturesCache } from "./fixtures.js";
+export {
+  BENCHMARK_DOMAIN_DIRS,
+  loadDomainBenchmarkSuites,
+} from "./domain-benchmark-loader.js";
 export {
   TASK_CONTRACT_EVALUATOR_ID,
   aggregateQualityScore,

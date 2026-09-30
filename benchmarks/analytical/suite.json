@@ -1,0 +1,182 @@
+{
+  "version": "1",
+  "domain": "analytical",
+  "description": "Quantitative and reasoning tasks with explicit assumptions and required reasoning steps.",
+  "cases": [
+    {
+      "id": "ana-10x-workload",
+      "task": "Evaluate whether system X can handle 10x workload.",
+      "taskType": "analytical",
+      "context": {
+        "description": "Baseline 1k req/s; DB write path and egress limits provided",
+        "assumptions": [
+          "Steady-state traffic doubles uniformly across endpoints",
+          "Database write path is the first saturating component",
+          "Network egress cap is 2 Gbps",
+          "Traffic mix unchanged at 10x"
+        ]
+      },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Bottleneck, constraints, calculation, failure mode, conclusion with uncertainty" },
+      "successCriteria": [
+        {
+          "id": "states_assumptions",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["assume", "assumption", "baseline"] }
+        },
+        {
+          "id": "bottleneck_a",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["database", "write"] }
+        },
+        {
+          "id": "constraint_b",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["egress", "network"] }
+        },
+        {
+          "id": "calculation_c",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAll": ["10", "x", "req/s|requests"] }
+        },
+        {
+          "id": "failure_mode_d",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["cascade", "saturation", "queue depth"] }
+        },
+        {
+          "id": "conclusion_uncertainty",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["uncertain", "cannot handle", "can handle", "risk"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2400,
+          "inputTokens": 2500,
+          "outputTokens": 850,
+          "output": "Assumptions: uniform 10x growth, 1k req/s baseline, DB write path saturates first, 2 Gbps network egress cap. At 10x (10k req/s), database write path saturates first. Network egress needs ~2.4 Gbps — exceeds constraint B. Queue depth grows → cascade under saturation. Conclusion: cannot handle 10x without sharding writes; uncertainty ±15% on traffic mix.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 900,
+          "inputTokens": 2500,
+          "outputTokens": 120,
+          "output": "System X is fine and will easily handle 10x.\n"
+        }
+      ]
+    },
+    {
+      "id": "ana-storage-cost",
+      "task": "Estimate monthly storage cost if we retain 90 days of logs at current ingest rate.",
+      "taskType": "analytical",
+      "context": {
+        "description": "500 GB/day ingest; $0.023/GB-month hot tier",
+        "assumptions": [
+          "Ingest is flat 500 GB/day",
+          "No compression",
+          "Hot tier pricing only",
+          "Full 90-day retention without deletion"
+        ]
+      },
+      "successCriteria": [
+        {
+          "id": "assumptions",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["assume", "500", "GB"] }
+        },
+        {
+          "id": "calculation",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["45", "TB", "1035", "34\\.5"] }
+        },
+        {
+          "id": "uncertainty",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["±", "uncertain", "if", "depends"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2000,
+          "inputTokens": 2000,
+          "outputTokens": 500,
+          "output": "Assumptions: 500 GB/day × 90 days ≈ 45 TB retained. At $0.023/GB-month → ~$1,035/month hot storage (45,000 × 0.023). Uncertainty: ±20% if compression or tiering applies.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 850,
+          "inputTokens": 2000,
+          "outputTokens": 40,
+          "output": "Storage is cheap; don't worry about it.\n"
+        }
+      ]
+    },
+    {
+      "id": "ana-queue-saturation",
+      "task": "Will the job queue saturate if we double publishers?",
+      "taskType": "analytical",
+      "context": {
+        "description": "Consumers fixed at 200/s; publishers 180/s today; queue depth stable",
+        "assumptions": [
+          "Consumer rate fixed at 200 jobs/s",
+          "Publish rate scales linearly with publishers",
+          "No back-pressure on publishers today"
+        ]
+      },
+      "successCriteria": [
+        {
+          "id": "assumptions_stated",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["200", "consumer", "assume"] }
+        },
+        {
+          "id": "math",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["360", "160", "net"] }
+        },
+        {
+          "id": "conclusion",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["saturat", "grow", "backlog", "cannot"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1800,
+          "inputTokens": 1800,
+          "outputTokens": 450,
+          "output": "Assume consumers stay at 200 jobs/s. Doubling publishers: 180→360 jobs/s published. Net inflow +160/s → queue depth grows without bound (saturation/backlog). Conclusion: will saturate unless consumers scale or rate-limit publishers.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 800,
+          "inputTokens": 1800,
+          "outputTokens": 35,
+          "output": "Queues handle spikes automatically.\n"
+        }
+      ]
+    }
+  ]
+}

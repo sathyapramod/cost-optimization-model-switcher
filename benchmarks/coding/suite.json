@@ -1,0 +1,141 @@
+{
+  "version": "1",
+  "domain": "coding",
+  "description": "Implementation tasks evaluated with executable-style checks on recorded code output.",
+  "cases": [
+    {
+      "id": "code-hello-endpoint",
+      "task": "Implement a hello HTTP endpoint with unit tests",
+      "taskType": "code_generation",
+      "context": { "description": "Greenfield Node/TS service" },
+      "requirements": { "coding": 4, "reasoning": 2 },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Handler returns 200 hello plus describe/it tests" },
+      "successCriteria": [
+        {
+          "id": "has_code",
+          "type": "deterministic",
+          "required": true,
+          "description": "Includes implementation",
+          "spec": { "check": "has_code_fence" }
+        },
+        {
+          "id": "tests",
+          "type": "deterministic",
+          "required": true,
+          "description": "Includes test assertions",
+          "spec": {
+            "check": "embedded_test_assertions",
+            "testPatterns": ["describe\\(", "it\\(", "200", "hello"]
+          }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2100,
+          "inputTokens": 4000,
+          "outputTokens": 900,
+          "output": "```ts\nexport function hello() { return { status: 200, body: 'hello' }; }\n```\n```ts\ndescribe('hello', () => { it('returns 200', () => expect(hello().status).toBe(200)); });\n```\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 1200,
+          "inputTokens": 4000,
+          "outputTokens": 120,
+          "output": "You could add a hello route in your framework of choice.\n"
+        }
+      ]
+    },
+    {
+      "id": "code-parse-semver",
+      "task": "Implement parseSemver(version: string) and unit tests for valid/invalid input",
+      "taskType": "code_generation",
+      "context": { "description": "Utility module" },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "parseSemver function plus tests for 1.2.3 and reject empty" },
+      "successCriteria": [
+        {
+          "id": "exports_fn",
+          "type": "deterministic",
+          "required": true,
+          "description": "Defines parseSemver",
+          "spec": { "check": "exports_named_function", "functionName": "parseSemver" }
+        },
+        {
+          "id": "tests",
+          "type": "deterministic",
+          "required": true,
+          "description": "Test cases in output",
+          "spec": {
+            "check": "embedded_test_assertions",
+            "testPatterns": ["parseSemver", "1\\.2\\.3", "toThrow|invalid"]
+          }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2400,
+          "inputTokens": 3500,
+          "outputTokens": 700,
+          "output": "```ts\nexport function parseSemver(version: string) {\n  if (!version) throw new Error('invalid');\n  const m = version.match(/^(\\d+)\\.(\\d+)\\.(\\d+)$/);\n  if (!m) throw new Error('invalid');\n  return { major: +m[1], minor: +m[2], patch: +m[3] };\n}\n```\n```ts\ntest('parses 1.2.3', () => expect(parseSemver('1.2.3').patch).toBe(3));\ntest('invalid', () => expect(() => parseSemver('')).toThrow());\n```\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 1100,
+          "inputTokens": 3500,
+          "outputTokens": 100,
+          "output": "Use a library like semver instead of writing your own.\n"
+        }
+      ]
+    },
+    {
+      "id": "code-retry-wrapper",
+      "task": "Implement withRetry(fn, attempts) with tests for success after transient failure",
+      "taskType": "code_generation",
+      "context": { "description": "Async retry helper" },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "withRetry retries until success; tests mock failures" },
+      "successCriteria": [
+        {
+          "id": "exports_fn",
+          "type": "deterministic",
+          "required": true,
+          "spec": { "check": "exports_named_function", "functionName": "withRetry" }
+        },
+        {
+          "id": "tests",
+          "type": "deterministic",
+          "required": true,
+          "spec": {
+            "check": "embedded_test_assertions",
+            "testPatterns": ["withRetry", "attempts", "mock|jest|vi\\."]
+          }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-opus-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2800,
+          "inputTokens": 3200,
+          "outputTokens": 850,
+          "output": "```ts\nexport async function withRetry(fn: () => Promise<unknown>, attempts: number) {\n  let last;\n  for (let i = 0; i < attempts; i++) {\n    try { return await fn(); } catch (e) { last = e; }\n  }\n  throw last;\n}\n```\n```ts\nconst mock = jest.fn().mockRejectedValueOnce(new Error('x')).mockResolvedValue('ok');\ntest('withRetry', async () => expect(await withRetry(mock, 3)).toBe('ok'));\n```\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 1000,
+          "inputTokens": 3200,
+          "outputTokens": 90,
+          "output": "Wrap your call in a for loop and catch errors.\n"
+        }
+      ]
+    }
+  ]
+}

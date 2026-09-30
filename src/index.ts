@@ -152,7 +152,10 @@ export {
 export type { EvaluationReport, RunEvaluationOptions } from "./evaluation.js";
 export {
   formatTaskQualityMarkdown,
+  loadDomainBenchmarkSuites,
   loadTaskQualityFixtures,
+  resetTaskQualityFixturesCache,
+  BENCHMARK_DOMAIN_DIRS,
   runTaskQualityEvaluation,
   evaluateTaskCandidate,
   evaluateTaskCase,

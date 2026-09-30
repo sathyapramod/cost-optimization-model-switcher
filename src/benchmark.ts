@@ -252,15 +252,23 @@ export function formatBenchmarkMarkdown(report: BenchmarkReport): string {
     );
   }
 
-  lines.push("", "### Cost per successful task (USD, heuristic)", "");
+  lines.push(
+    "",
+    "*Success rate column uses **synthetic** placeholder data from `benchmarks/success-rates.json` — not empirical task-quality results.",
+    "",
+    "### Cost per successful task (USD, heuristic)",
+    "",
+  );
   for (const f of report.fixtures) {
     lines.push(`**${f.id}** — ${f.description}`);
     lines.push("");
-    lines.push("| Start tier | Gate | Routed | Turn $ | Success rate | $/success |");
-    lines.push("|------------|------|--------|--------|--------------|-----------|");
+    lines.push(
+      "| Start tier | Gate | Routed | Turn $ | Success rate (synthetic) | $/success |",
+    );
+    lines.push("|------------|------|--------|--------|--------------------------|-----------|");
     for (const c of f.cells) {
       lines.push(
-        `| ${c.startingTier} | ${c.gateAction} | ${c.routedTier} | ${c.turnCostUsd.toFixed(4)} | ${(c.assumedSuccessRate * 100).toFixed(0)}% | ${c.costPerSuccessfulTaskUsd.toFixed(4)} |`,
+        `| ${c.startingTier} | ${c.gateAction} | ${c.routedTier} | ${c.turnCostUsd.toFixed(4)} | ${(c.assumedSuccessRate * 100).toFixed(0)}%* | ${c.costPerSuccessfulTaskUsd.toFixed(4)} |`,
       );
     }
     lines.push("");

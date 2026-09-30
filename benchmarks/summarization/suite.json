@@ -1,0 +1,145 @@
+{
+  "version": "1",
+  "domain": "summarization",
+  "description": "Condense source material without losing requested facts or inventing claims.",
+  "cases": [
+    {
+      "id": "sum-ci-log-errors",
+      "task": "Summarize this CI log and list errors only",
+      "taskType": "summarization",
+      "context": {
+        "description": "500KB CI worker log with OOM and exit 137",
+        "probes": [{ "source": "log_file", "bytes": 500000 }]
+      },
+      "requirements": { "bulkTextProcessing": 4, "reasoning": 1 },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Surface OOM and exit code 137; omit unrelated infra narrative" },
+      "successCriteria": [
+        {
+          "id": "preserve_key_facts",
+          "description": "Preserve key facts",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["OOM", "exit code 137"] }
+        },
+        {
+          "id": "no_unsupported_claims",
+          "description": "No unsupported claims",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustNotInclude": ["kubernetes cluster upgraded"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 920,
+          "inputTokens": 48000,
+          "outputTokens": 350,
+          "output": "## Errors\n- Java OOM in worker-3 (exit code 137)\n- Test suite aborted after heap exhaustion\n"
+        },
+        {
+          "modelId": "gpt-4o-mini",
+          "provider": "openai",
+          "latencyMs": 880,
+          "inputTokens": 48000,
+          "outputTokens": 340,
+          "output": "## Errors\n- Java OOM in worker-3 (exit code 137)\n- Test suite aborted after heap exhaustion\n"
+        }
+      ]
+    },
+    {
+      "id": "sum-meeting-actions",
+      "task": "Summarize this engineering standup and list action items with owners",
+      "taskType": "summarization",
+      "context": {
+        "description": "Standup transcript with three explicit action items",
+        "probes": [{ "source": "paste", "bytes": 12000 }]
+      },
+      "requirements": { "bulkTextProcessing": 3, "reasoning": 2 },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Bullet action items naming owners A/B/C" },
+      "successCriteria": [
+        {
+          "id": "action_items",
+          "description": "Lists owners",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["Alice", "Bob", "Carol", "action"] }
+        },
+        {
+          "id": "no_hallucinated_okr",
+          "description": "No invented OKR",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustNotInclude": ["Q5 OKR"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1100,
+          "inputTokens": 9000,
+          "outputTokens": 220,
+          "output": "**Action items**\n- Alice: fix flaky payment test\n- Bob: roll out cache config\n- Carol: draft incident retro\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 650,
+          "inputTokens": 9000,
+          "outputTokens": 40,
+          "output": "Standup went well. Team morale is high.\n"
+        }
+      ]
+    },
+    {
+      "id": "sum-release-breaking",
+      "task": "Summarize release notes and highlight breaking API changes only",
+      "taskType": "summarization",
+      "context": {
+        "description": "Release notes with one breaking change on /v2/users",
+        "probes": [{ "source": "paste", "bytes": 25000 }]
+      },
+      "requirements": { "bulkTextProcessing": 3, "outputComplexity": 2 },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Call out /v2/users field rename; ignore minor fixes" },
+      "successCriteria": [
+        {
+          "id": "breaking_called",
+          "description": "Breaking change named",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["/v2/users", "breaking"] }
+        },
+        {
+          "id": "min_bullets",
+          "description": "Structured list",
+          "type": "structured",
+          "required": true,
+          "spec": { "minBulletLines": 1 }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 980,
+          "inputTokens": 14000,
+          "outputTokens": 180,
+          "output": "**Breaking**\n- `/v2/users` response: `name` renamed to `displayName` (clients must migrate).\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 700,
+          "inputTokens": 14000,
+          "outputTokens": 60,
+          "output": "Many bug fixes and performance improvements in this release.\n"
+        }
+      ]
+    }
+  ]
+}

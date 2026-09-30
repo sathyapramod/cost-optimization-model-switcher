@@ -14,7 +14,9 @@ Issue [#6](https://github.com/sathyapramod/cost-optimization-model-switcher/issu
 | **Regression only** | Gate action + tier per fixture × starting tier | `npm run benchmark` |
 | **Live quality (optional)** | Real success, latency, tokens | Record runs in `benchmarks/live-results.json` (schema provided) |
 
-Router benchmarks do **not** call LLM APIs. They use `evaluateGate`, `catalogs/pricing.json`, and assumed success rates in `benchmarks/success-rates.json`.
+Router benchmarks do **not** call LLM APIs. They use `evaluateGate`, `catalogs/pricing.json`, and **synthetic** success rates in `benchmarks/success-rates.json` (`synthetic: true`).
+
+Domain **task-quality** benchmarks (quality/cost/latency/failure rate per model) live under `benchmarks/summarization/`, `extraction/`, `coding/`, etc. See [benchmarks/README.md](../benchmarks/README.md).
 
 ## Key metric
 

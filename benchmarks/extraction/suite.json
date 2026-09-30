@@ -1,0 +1,151 @@
+{
+  "version": "1",
+  "domain": "extraction",
+  "description": "Pull structured fields from source context without adding unsupported values.",
+  "cases": [
+    {
+      "id": "ext-jira-p0-json",
+      "task": "Extract all P0 Jira tickets from this sprint export as JSON",
+      "taskType": "extraction",
+      "category": "summarization",
+      "context": {
+        "description": "Sprint export with two P0 issues",
+        "probes": [{ "source": "jira", "issueCount": 25 }]
+      },
+      "requirements": { "bulkTextProcessing": 4, "toolUse": 2 },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "JSON array with PROJ-101 and PROJ-204 priority P0" },
+      "successCriteria": [
+        {
+          "id": "structured_output",
+          "description": "Valid JSON with ticket ids",
+          "type": "deterministic",
+          "required": true,
+          "spec": {
+            "check": "structured_json",
+            "requiredKeys": ["tickets"],
+            "itemKeys": ["id", "priority"]
+          }
+        },
+        {
+          "id": "p0_keys",
+          "description": "Includes P0 keys",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["PROJ-101", "PROJ-204", "P0"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1400,
+          "inputTokens": 12000,
+          "outputTokens": 200,
+          "output": "```json\n{\"tickets\":[{\"id\":\"PROJ-101\",\"priority\":\"P0\"},{\"id\":\"PROJ-204\",\"priority\":\"P0\"}]}\n```\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 720,
+          "inputTokens": 12000,
+          "outputTokens": 160,
+          "output": "```json\n{\"tickets\":[{\"id\":\"PROJ-101\",\"priority\":\"P0\"},{\"id\":\"PROJ-204\",\"priority\":\"P0\"}]}\n```\n"
+        }
+      ]
+    },
+    {
+      "id": "ext-invoice-fields",
+      "task": "Extract vendor name, invoice total, and due date from this PDF text as JSON",
+      "taskType": "extraction",
+      "context": {
+        "description": "Invoice text with Acme Corp, $1,240.50, due 2026-04-01",
+        "probes": [{ "source": "paste", "bytes": 8000 }]
+      },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Exact amounts and ISO date in JSON" },
+      "successCriteria": [
+        {
+          "id": "json_fields",
+          "description": "JSON keys present",
+          "type": "deterministic",
+          "required": true,
+          "spec": {
+            "check": "structured_json",
+            "requiredKeys": ["vendor", "total", "dueDate"]
+          }
+        },
+        {
+          "id": "values",
+          "description": "Correct values",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["Acme", "1240.50", "2026-04-01"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 900,
+          "inputTokens": 6000,
+          "outputTokens": 120,
+          "output": "```json\n{\"vendor\":\"Acme Corp\",\"total\":\"1240.50\",\"dueDate\":\"2026-04-01\"}\n```\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 600,
+          "inputTokens": 6000,
+          "outputTokens": 50,
+          "output": "{\"vendor\":\"Acme\",\"total\":\"999\",\"dueDate\":\"soon\"}\n"
+        }
+      ]
+    },
+    {
+      "id": "ext-log-error-codes",
+      "task": "Extract unique HTTP status codes from this access log as JSON array statusCodes",
+      "taskType": "extraction",
+      "context": {
+        "description": "Access log containing 200, 404, 500",
+        "probes": [{ "source": "log_file", "bytes": 200000 }]
+      },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "statusCodes lists 200, 404, 500" },
+      "successCriteria": [
+        {
+          "id": "json_shape",
+          "type": "deterministic",
+          "required": true,
+          "description": "JSON with statusCodes",
+          "spec": { "check": "structured_json", "requiredKeys": ["statusCodes"] }
+        },
+        {
+          "id": "codes",
+          "type": "structured",
+          "required": true,
+          "description": "All codes present",
+          "spec": { "mustInclude": ["200", "404", "500"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 850,
+          "inputTokens": 30000,
+          "outputTokens": 80,
+          "output": "```json\n{\"statusCodes\":[200,404,500]}\n```\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 820,
+          "inputTokens": 30000,
+          "outputTokens": 40,
+          "output": "Most requests returned 200.\n"
+        }
+      ]
+    }
+  ]
+}

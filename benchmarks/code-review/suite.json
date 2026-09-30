@@ -1,0 +1,135 @@
+{
+  "version": "1",
+  "domain": "code-review",
+  "description": "Find real defects in diffs; avoid false positives and invented CVEs.",
+  "cases": [
+    {
+      "id": "review-sql-injection",
+      "task": "Review PR diff and list security bugs",
+      "taskType": "code_review",
+      "context": {
+        "description": "Diff with string-concatenated SQL",
+        "probes": [{ "source": "github_pr", "additions": 200, "deletions": 10, "changedFiles": 3 }]
+      },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Flag SQL injection; parameterized queries; severity label" },
+      "successCriteria": [
+        {
+          "id": "defect",
+          "type": "structured",
+          "required": true,
+          "description": "SQL injection named",
+          "spec": { "patternsAny": ["sql injection", "parameteriz"] }
+        },
+        {
+          "id": "no_fake_cve",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustNotInclude": ["CVE-2099-9999"] }
+        },
+        {
+          "id": "severity",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["high", "critical"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1500,
+          "inputTokens": 8000,
+          "outputTokens": 420,
+          "output": "**High**: User input concatenated into SQL in `UserRepo.lookup` — use parameterized queries to prevent SQL injection.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 900,
+          "inputTokens": 8000,
+          "outputTokens": 100,
+          "output": "**Critical**: CVE-2099-9999 affects this repo. Upgrade React immediately.\n"
+        }
+      ]
+    },
+    {
+      "id": "review-missing-lock",
+      "task": "Review this PR for concurrency defects",
+      "taskType": "code_review",
+      "context": {
+        "description": "Shared map mutation without lock",
+        "probes": [{ "source": "github_pr", "additions": 80, "deletions": 5, "changedFiles": 2 }]
+      },
+      "expectedBehavior": { "summary": "Identify unsynchronized map access" },
+      "successCriteria": [
+        {
+          "id": "race",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["race", "concurrent", "mutex", "lock"] }
+        },
+        {
+          "id": "no_nit",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustNotInclude": ["rename variable foo"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1300,
+          "inputTokens": 5000,
+          "outputTokens": 300,
+          "output": "Concurrent writes to `cache` map without synchronization — data race. Add a mutex around mutations.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 850,
+          "inputTokens": 5000,
+          "outputTokens": 60,
+          "output": "Consider renaming variable foo for clarity.\n"
+        }
+      ]
+    },
+    {
+      "id": "review-idor",
+      "task": "Review API change for authorization flaws",
+      "taskType": "code_review",
+      "context": {
+        "description": "GET /user/:id returns any profile without ownership check",
+        "probes": [{ "source": "github_pr", "additions": 40, "deletions": 2, "changedFiles": 1 }]
+      },
+      "expectedBehavior": { "summary": "IDOR / broken object-level auth" },
+      "successCriteria": [
+        {
+          "id": "idor",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["IDOR", "object-level", "authorization", "ownership"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1200,
+          "inputTokens": 4500,
+          "outputTokens": 250,
+          "output": "Broken object-level authorization: `/user/:id` does not verify the caller owns `id` (IDOR). Enforce ownership on every read.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 800,
+          "inputTokens": 4500,
+          "outputTokens": 50,
+          "output": "LGTM — RESTful design looks clean.\n"
+        }
+      ]
+    }
+  ]
+}

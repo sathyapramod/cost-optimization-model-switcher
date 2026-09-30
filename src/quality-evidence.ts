@@ -41,6 +41,7 @@ export function buildQualityEvidenceFromFixtures(): QualityEvidenceIndex {
 
     for (const candidate of taskCase.candidates) {
       const result = evaluateTaskCandidate(taskCase, candidate);
+      if (!result.passed) continue;
       const key = evidenceKey(candidate.provider, candidate.modelId, specId);
       const bucket =
         buckets.get(key) ??
@@ -83,7 +84,6 @@ export function loadDefaultQualityEvidence(): QualityEvidenceIndex {
   return cachedIndex;
 }
 
-/** Rebuild fixture index (tests) or after fixture edits. */
 export function resetQualityEvidenceCache(): void {
   cachedIndex = null;
 }

@@ -9,21 +9,22 @@ import { loadTaskQualityFixtures } from "../task-quality/fixtures.js";
 import { evaluateTaskCandidate } from "../task-quality/runner.js";
 
 describe("task quality evaluation", () => {
-  it("loads fixtures for all required categories", () => {
+  it("loads domain benchmark cases", () => {
     const suite = loadTaskQualityFixtures();
     const ids = suite.cases.map((c) => c.id);
-    assert.ok(ids.includes("summarization-ci-log"));
-    assert.ok(ids.includes("extraction-jira-p0"));
-    assert.ok(ids.includes("code-generation-plugin"));
-    assert.ok(ids.includes("code-review-sql"));
-    assert.ok(ids.includes("debugging-race"));
-    assert.ok(ids.includes("architecture-auth-migration"));
-    assert.ok(ids.includes("analytical-10x-workload"));
+    assert.ok(ids.includes("sum-ci-log-errors"));
+    assert.ok(ids.includes("ext-jira-p0-json"));
+    assert.ok(ids.includes("code-hello-endpoint"));
+    assert.ok(ids.includes("review-sql-injection"));
+    assert.ok(ids.includes("dbg-cache-race"));
+    assert.ok(ids.includes("arch-auth-migration"));
+    assert.ok(ids.includes("sec-api-audit"));
+    assert.ok(ids.includes("ana-10x-workload"));
   });
 
   it("analytical fixture passes strong output and fails weak output", () => {
     const suite = loadTaskQualityFixtures();
-    const case_ = suite.cases.find((c) => c.id === "analytical-10x-workload")!;
+    const case_ = suite.cases.find((c) => c.id === "ana-10x-workload")!;
     const good = evaluateTaskCandidate(case_, case_.candidates[0]!);
     const weak = evaluateTaskCandidate(case_, case_.candidates[1]!);
     assert.equal(good.passed, true);
@@ -31,9 +32,7 @@ describe("task quality evaluation", () => {
     assert.equal(weak.passed, false);
     assert.ok(weak.qualityScore < 0.5);
     assert.ok(
-      weak.criterionResults.some(
-        (r) => r.criterionId === "identifies_bottleneck_a" && !r.passed,
-      ),
+      weak.criterionResults.some((r) => r.criterionId === "bottleneck_a" && !r.passed),
     );
   });
 
@@ -88,7 +87,8 @@ describe("task quality evaluation", () => {
 
   it("runTaskQualityEvaluation produces report with cost and latency fields", () => {
     const report = runTaskQualityEvaluation();
-    assert.ok(report.summary.resultCount >= 8);
+    assert.ok(report.summary.resultCount >= 24);
+    assert.ok(report.summary.byModelDomain.length > 0);
     const first = report.cases[0]!.results[0]!;
     assert.ok(typeof first.latencyMs === "number");
     assert.ok(typeof first.estimatedCostUsd === "number");

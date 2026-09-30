@@ -1,0 +1,134 @@
+{
+  "version": "1",
+  "domain": "debugging",
+  "description": "Root-cause analysis with evidence and fixes that address the actual failure.",
+  "cases": [
+    {
+      "id": "dbg-cache-race",
+      "task": "Fix the race condition in the cache module",
+      "taskType": "debugging",
+      "context": { "description": "Logs show interleaved PUT on shared map" },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "Name race; cite logs; propose mutex/serialization" },
+      "successCriteria": [
+        {
+          "id": "root_cause",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["race", "concurrent"] }
+        },
+        {
+          "id": "evidence",
+          "type": "rubric",
+          "required": true,
+          "spec": { "rubricKeywords": ["log", "stack", "interleaved", "goroutine", "thread"] }
+        },
+        {
+          "id": "fix",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["mutex", "lock", "serializ"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1800,
+          "inputTokens": 6000,
+          "outputTokens": 500,
+          "output": "Root cause: concurrent goroutines write the shared map without synchronization (race). Log lines and stack trace show interleaved PUT on multiple threads. Fix: guard cache with a mutex.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 900,
+          "inputTokens": 6000,
+          "outputTokens": 80,
+          "output": "Try restarting the service and clearing the cache.\n"
+        }
+      ]
+    },
+    {
+      "id": "dbg-nil-pointer",
+      "task": "Debug NPE in checkout flow from this stack trace",
+      "taskType": "debugging",
+      "context": {
+        "description": "Stack points to null cart.items in PricingService",
+        "probes": [{ "source": "log_file", "bytes": 50000 }]
+      },
+      "expectedBehavior": { "summary": "Identify null cart.items; guard or initialize" },
+      "successCriteria": [
+        {
+          "id": "null_site",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["cart.items", "null", "undefined"] }
+        },
+        {
+          "id": "fix",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["initialize", "guard", "optional chaining", "default"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1600,
+          "inputTokens": 7000,
+          "outputTokens": 400,
+          "output": "NPE at PricingService: `cart.items` is null when guest checkout skips cart creation. Initialize empty items array or guard before iterate.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 850,
+          "inputTokens": 7000,
+          "outputTokens": 60,
+          "output": "Upgrade to the latest JVM patch release.\n"
+        }
+      ]
+    },
+    {
+      "id": "dbg-wrong-env",
+      "task": "Why are staging API calls hitting production?",
+      "taskType": "debugging",
+      "context": { "description": "Config shows API_BASE_URL copied from prod template" },
+      "expectedBehavior": { "summary": "Misconfigured API_BASE_URL / env var" },
+      "successCriteria": [
+        {
+          "id": "config_root",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["API_BASE_URL", "environment", "staging", "production"] }
+        },
+        {
+          "id": "remediation",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["fix", "set", "override", "secret", "config"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1400,
+          "inputTokens": 5000,
+          "outputTokens": 320,
+          "output": "Staging deployment still has `API_BASE_URL=https://api.prod.example` from the prod template. Fix: set staging-specific env in the deployment config / secrets manager.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 800,
+          "inputTokens": 5000,
+          "outputTokens": 40,
+          "output": "Production is faster; keep using it.\n"
+        }
+      ]
+    }
+  ]
+}

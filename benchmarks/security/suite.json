@@ -1,0 +1,128 @@
+{
+  "version": "1",
+  "domain": "security",
+  "description": "Threat coverage and actionable remediation on realistic vulnerable surfaces.",
+  "cases": [
+    {
+      "id": "sec-api-audit",
+      "task": "Run a security audit on this API surface and explain exploit paths",
+      "taskType": "security",
+      "context": {
+        "description": "REST API with IDOR and SQLi patterns in diff",
+        "probes": [{ "source": "github_pr", "additions": 800, "deletions": 200, "changedFiles": 12 }]
+      },
+      "evaluator": "task-contract-evaluator-v1",
+      "expectedBehavior": { "summary": "IDOR + injection paths with remediation" },
+      "successCriteria": [
+        {
+          "id": "threat_coverage",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["auth bypass", "injection", "IDOR"] }
+        },
+        {
+          "id": "actionable_remediation",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["remediat", "fix:", "mitigation", "rotate keys"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-opus-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2800,
+          "inputTokens": 12000,
+          "outputTokens": 900,
+          "output": "Threat coverage: broken object-level auth on `/user/{id}` enables IDOR; SQL injection in legacy search param. Exploit path: swap user id then chain to admin token. Remediation: enforce object ownership checks, parameterize queries, rotate API keys after fix.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 900,
+          "inputTokens": 12000,
+          "outputTokens": 70,
+          "output": "No major issues found. Enable HTTPS.\n"
+        }
+      ]
+    },
+    {
+      "id": "sec-secrets-in-repo",
+      "task": "Review repo scan: leaked AWS keys in history — what to do?",
+      "taskType": "security",
+      "context": { "description": "Gitleaks found AKIA keys in commit from 2024" },
+      "expectedBehavior": { "summary": "Revoke keys, rotate, purge history guidance" },
+      "successCriteria": [
+        {
+          "id": "revoke",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["revoke", "rotate", "invalidate"] }
+        },
+        {
+          "id": "prevent",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["secret manager", "pre-commit", "scan", "vault"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1500,
+          "inputTokens": 4000,
+          "outputTokens": 350,
+          "output": "Immediately revoke and rotate the exposed AKIA keys in IAM. Audit CloudTrail for use. Remove from git history or accept key rotation as source of truth. Prevent: store secrets in a vault/secret manager; add pre-commit gitleaks.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 800,
+          "inputTokens": 4000,
+          "outputTokens": 40,
+          "output": "Delete the file and commit again.\n"
+        }
+      ]
+    },
+    {
+      "id": "sec-ssrf-fetch",
+      "task": "Assess SSRF risk in user-supplied URL fetch feature",
+      "taskType": "security",
+      "context": { "description": "Server fetches arbitrary URLs for link previews" },
+      "expectedBehavior": { "summary": "SSRF to metadata IP; allowlist/denylist mitigations" },
+      "successCriteria": [
+        {
+          "id": "ssrf_named",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["SSRF", "server-side request forgery"] }
+        },
+        {
+          "id": "mitigation",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["allowlist", "block", "169.254", "metadata", "egress"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-opus-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2600,
+          "inputTokens": 3500,
+          "outputTokens": 800,
+          "output": "SSRF: attackers can hit `http://169.254.169.254/` or internal admin ports. Mitigation: allowlist schemes/hosts, block link-local and RFC1918, no redirects to internal IPs, egress proxy with policy.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 850,
+          "inputTokens": 3500,
+          "outputTokens": 50,
+          "output": "Fetching URLs is safe if you use HTTPS.\n"
+        }
+      ]
+    }
+  ]
+}

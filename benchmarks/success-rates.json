@@ -1,6 +1,8 @@
 {
   "version": "1",
-  "note": "Assumed task success rates by category × tier for cost-per-success math. Replace with benchmarks/live-results.json after live eval runs.",
+  "synthetic": true,
+  "dataClass": "synthetic_demo",
+  "note": "SYNTHETIC / DEMO ONLY — placeholder tier×category success rates for router cost-per-success math in benchmarks/fixtures.json. Do NOT use for model quality, routing evidence, or task-quality evaluation. Replace with empirical rates from domain task-quality runs (npm run evaluate:task-quality) when available.",
   "rates": {
     "summarization": { "fast": 0.92, "balanced": 0.96, "premium": 0.98 },
     "pr_review": { "fast": 0.75, "balanced": 0.94, "premium": 0.97 },

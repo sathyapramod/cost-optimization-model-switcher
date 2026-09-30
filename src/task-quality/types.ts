@@ -12,10 +12,40 @@ export interface TaskCaseCandidate {
   outputTokens: number;
 }
 
+/** Domain folder under `benchmarks/` (task-quality suites). */
+export type BenchmarkDomain =
+  | "summarization"
+  | "extraction"
+  | "coding"
+  | "code-review"
+  | "debugging"
+  | "architecture"
+  | "security"
+  | "analytical";
+
+export interface TaskCaseContext {
+  description?: string;
+  probes?: ContextProbe[];
+  /** Analytical / planning tasks: explicit assumptions the model must state or use. */
+  assumptions?: string[];
+}
+
 export interface TaskCase {
   id: string;
   category: TaskCategory;
   userMessage: string;
+  /** Source domain suite (when loaded from `benchmarks/<domain>/suite.json`). */
+  domain?: BenchmarkDomain;
+  taskType?: string;
+  context?: TaskCaseContext;
+  /** Inspectable capability needs for this benchmark (not router ground truth). */
+  requirements?: Record<string, number>;
+  expectedBehavior?: {
+    summary?: string;
+    notes?: string;
+  };
+  /** Primary offline evaluator id for this case. */
+  evaluator?: string;
   probes?: ContextProbe[];
   /** `fixture_only` uses only `evaluationCriteria` (explicit task checks). */
   criteriaSource?: "merged" | "fixture_only" | "contract_only";
@@ -33,6 +63,14 @@ export interface EvaluableCriterion extends Omit<SuccessCriterion, "spec"> {
 }
 
 export interface CriterionCheckSpec {
+  /** For `structured_json` check: keys that must exist on parsed root object. */
+  requiredKeys?: string[];
+  /** For `structured_json`: each array item must include these keys (first array found). */
+  itemKeys?: string[];
+  /** For `exports_named_function`: symbol that must appear in a code fence. */
+  functionName?: string;
+  /** For `embedded_test_assertions`: regex patterns that must match (executable-style tests in output). */
+  testPatterns?: string[];
   /** All strings must appear in output (case-insensitive). */
   mustInclude?: string[];
   /** None of these may appear (false-positive guards). */
@@ -78,7 +116,20 @@ export interface EvaluationResult {
 export interface TaskCaseEvaluation {
   caseId: string;
   category: TaskCategory;
+  domain?: BenchmarkDomain;
   results: EvaluationResult[];
+}
+
+export interface ModelDomainBenchmarkStats {
+  modelId: string;
+  provider: Provider;
+  domain: BenchmarkDomain;
+  caseCount: number;
+  passCount: number;
+  failureRate: number;
+  meanQuality: number;
+  meanCostUsd: number;
+  meanLatencyMs: number;
 }
 
 export interface TaskQualityReport {
@@ -91,6 +142,7 @@ export interface TaskQualityReport {
     resultCount: number;
     passed: number;
     failed: number;
+    byModelDomain: ModelDomainBenchmarkStats[];
   };
 }
 
