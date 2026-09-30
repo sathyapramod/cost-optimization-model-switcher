@@ -85,17 +85,34 @@ export {
   isAnalyticalTask,
   isUnderspecifiedUserMessage,
   resolveContractTaskType,
+  resolveSuccessSpecId,
 } from "./task-contract.js";
 export type {
   RiskLevel,
-  SuccessCriterion,
-  SuccessCriterionKind,
   TaskContract,
   TaskContractInput,
   TaskRequirements,
   TaskType,
   TaskUnderstandingConfidence,
 } from "./task-contract.js";
+export type { SuccessCriterion, SuccessCriterionType, TaskSuccessSpecification } from "./success-criteria.js";
+export {
+  buildTaskSuccessSpecification,
+  criteriaForSpec,
+  loadDefaultSuccessCriteriaCatalog,
+  mergeSuccessCriteriaCatalog,
+  optionalCriteria,
+  parseSuccessSpecification,
+  parseSuccessSpecificationJson,
+  requiredCriteria,
+  serializeSuccessSpecification,
+  serializeSuccessSpecificationJson,
+} from "./success-criteria.js";
+export type {
+  SerializedTaskSuccessSpecification,
+  SuccessCriteriaCatalog,
+  SuccessSpecId,
+} from "./success-criteria.js";
 export {
   assertAdversarialSuite,
   formatAdversarialMarkdown,

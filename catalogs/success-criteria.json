@@ -1,0 +1,201 @@
+{
+  "version": "1",
+  "note": "Task success definitions — complexity is not ground truth; task success is. Criteria are inspectable configuration, not router internals.",
+  "specs": {
+    "summarization": {
+      "specId": "summarization",
+      "label": "Summarization",
+      "criteria": [
+        {
+          "id": "preserve_key_facts",
+          "description": "Preserve key facts from the source material without distortion",
+          "type": "structured",
+          "required": true
+        },
+        {
+          "id": "no_unsupported_claims",
+          "description": "Do not introduce claims that are not supported by the provided context",
+          "type": "rubric",
+          "required": true
+        },
+        {
+          "id": "cover_important_sections",
+          "description": "Cover the important sections or themes requested in the prompt",
+          "type": "structured",
+          "required": true
+        }
+      ]
+    },
+    "code_generation": {
+      "specId": "code_generation",
+      "label": "Code generation",
+      "criteria": [
+        {
+          "id": "compiles",
+          "description": "Generated or modified code compiles or type-checks in the target project",
+          "type": "deterministic",
+          "required": true,
+          "spec": { "check": "compile", "runner": "pending" }
+        },
+        {
+          "id": "tests_pass",
+          "description": "Relevant automated tests pass after the change",
+          "type": "deterministic",
+          "required": true,
+          "spec": { "check": "test", "runner": "pending" }
+        },
+        {
+          "id": "requirements_satisfied",
+          "description": "Implementation satisfies functional requirements stated in the prompt",
+          "type": "structured",
+          "required": true
+        }
+      ]
+    },
+    "code_review": {
+      "specId": "code_review",
+      "label": "Code review",
+      "criteria": [
+        {
+          "id": "identify_known_defects",
+          "description": "Identify real defects present in the change set when evidence exists in the diff",
+          "type": "rubric",
+          "required": true
+        },
+        {
+          "id": "avoid_false_positives",
+          "description": "Avoid flagging issues that are not supported by the diff or context",
+          "type": "rubric",
+          "required": true
+        },
+        {
+          "id": "classify_severity",
+          "description": "Correctly classify severity or priority of findings",
+          "type": "structured",
+          "required": true
+        }
+      ]
+    },
+    "debugging": {
+      "specId": "debugging",
+      "label": "Debugging",
+      "criteria": [
+        {
+          "id": "identify_root_cause",
+          "description": "Identify root cause or a ranked set of hypotheses tied to symptoms",
+          "type": "structured",
+          "required": true
+        },
+        {
+          "id": "provide_evidence",
+          "description": "Provide evidence from logs, code paths, or reproduction steps supporting the diagnosis",
+          "type": "rubric",
+          "required": true
+        },
+        {
+          "id": "fix_addresses_root_cause",
+          "description": "Proposed fix or next steps address the identified root cause, not only symptoms",
+          "type": "structured",
+          "required": true
+        }
+      ]
+    },
+    "architecture": {
+      "specId": "architecture",
+      "label": "Architecture",
+      "criteria": [
+        {
+          "id": "satisfy_requirements",
+          "description": "Design satisfies functional and non-functional requirements in the prompt",
+          "type": "structured",
+          "required": true
+        },
+        {
+          "id": "identify_tradeoffs",
+          "description": "Identify trade-offs between options rather than a single unexplained choice",
+          "type": "structured",
+          "required": true
+        },
+        {
+          "id": "address_scalability",
+          "description": "Address scalability or growth constraints where relevant",
+          "type": "rubric",
+          "required": false
+        },
+        {
+          "id": "address_failure_modes",
+          "description": "Address failure modes, resilience, or operational risk",
+          "type": "structured",
+          "required": true
+        }
+      ]
+    },
+    "analytical": {
+      "specId": "analytical",
+      "label": "Analytical",
+      "criteria": [
+        {
+          "id": "validate_assumptions",
+          "description": "State and validate assumptions used in the analysis",
+          "type": "structured",
+          "required": true
+        },
+        {
+          "id": "required_calculations",
+          "description": "Perform required calculations or quantitative steps when the task demands them",
+          "type": "deterministic",
+          "required": false,
+          "spec": { "check": "calculation", "runner": "pending" }
+        },
+        {
+          "id": "consider_constraints",
+          "description": "Consider constraints and requirements from the prompt",
+          "type": "structured",
+          "required": true
+        },
+        {
+          "id": "explain_reasoning",
+          "description": "Explain reasoning steps linking evidence to conclusions",
+          "type": "rubric",
+          "required": true
+        },
+        {
+          "id": "conclusion_with_uncertainty",
+          "description": "Provide a conclusion that states uncertainty or limits of the analysis",
+          "type": "structured",
+          "required": true
+        }
+      ]
+    },
+    "security": {
+      "specId": "security",
+      "label": "Security review",
+      "criteria": [
+        {
+          "id": "threat_coverage",
+          "description": "Cover relevant threats, assets, and attack paths for the stated surface",
+          "type": "structured",
+          "required": true
+        },
+        {
+          "id": "actionable_remediation",
+          "description": "Remediation and verification steps are actionable",
+          "type": "structured",
+          "required": true
+        }
+      ]
+    },
+    "underspecified": {
+      "specId": "underspecified",
+      "label": "Underspecified task",
+      "criteria": [
+        {
+          "id": "clarify_before_evaluating",
+          "description": "Task intent must be clarified before success can be evaluated",
+          "type": "human",
+          "required": true
+        }
+      ]
+    }
+  }
+}

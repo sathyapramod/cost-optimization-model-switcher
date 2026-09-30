@@ -49,8 +49,9 @@ describe("task contract", () => {
     assert.equal(isAnalyticalTask(msg, analysis), true);
     assert.ok(analysis.contract.requirements.domainKnowledge >= 4);
     assert.ok(analysis.contract.requirements.outputComplexity >= 4);
+    assert.equal(analysis.contract.successSpecification.specId, "analytical");
     assert.ok(
-      analysis.contract.successCriteria.some((c) => c.id === "framework_or_criteria"),
+      analysis.contract.successCriteria.some((c) => c.id === "validate_assumptions"),
     );
   });
 
@@ -114,7 +115,8 @@ describe("TaskContract examples", () => {
     ]);
     assert.equal(c.taskType, "summarization");
     assert.equal(c.riskLevel, "low");
-    assert.ok(c.successCriteria.some((s) => s.id === "summary_coverage"));
+    assert.equal(c.successSpecification.specId, "summarization");
+    assert.ok(c.successCriteria.some((s) => s.id === "preserve_key_facts"));
   });
 
   it("b) PR review", () => {
@@ -123,7 +125,8 @@ describe("TaskContract examples", () => {
     ]);
     assert.equal(c.taskType, "pr_review");
     assert.ok(c.requirements.contextUnderstanding >= 3);
-    assert.ok(c.successCriteria.some((s) => s.id === "findings_actionable"));
+    assert.equal(c.successSpecification.specId, "code_review");
+    assert.ok(c.successCriteria.some((s) => s.id === "identify_known_defects"));
   });
 
   it("c) debugging", () => {
@@ -132,7 +135,8 @@ describe("TaskContract examples", () => {
     ]);
     assert.equal(c.taskType, "debugging");
     assert.ok(c.requirements.coding >= 3);
-    assert.ok(c.successCriteria.some((s) => s.id === "root_cause_or_hypothesis"));
+    assert.equal(c.successSpecification.specId, "debugging");
+    assert.ok(c.successCriteria.some((s) => s.id === "identify_root_cause"));
   });
 
   it("d) architecture design", () => {
@@ -149,6 +153,7 @@ describe("TaskContract examples", () => {
       "Analyze how eventual consistency in our checkout service affects duplicate charge risk under partition",
     );
     assert.ok(c.requirements.domainKnowledge >= 3);
-    assert.ok(c.successCriteria.some((s) => s.id === "tradeoffs"));
+    assert.equal(c.successSpecification.specId, "analytical");
+    assert.ok(c.successCriteria.some((s) => s.id === "consider_constraints"));
   });
 });

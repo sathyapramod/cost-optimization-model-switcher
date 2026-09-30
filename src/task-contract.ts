@@ -1,3 +1,9 @@
+import {
+  buildTaskSuccessSpecification,
+  type SuccessCriterion,
+  type SuccessSpecId,
+  type TaskSuccessSpecification,
+} from "./success-criteria.js";
 import type { Confidence, ContextBand, ContextProbe, ContextSource } from "./types.js";
 import type { TaskAnalysisCore, TaskCategory, TaskIntent } from "./task-types.js";
 
@@ -6,14 +12,11 @@ export type TaskType = TaskCategory;
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
-export type SuccessCriterionKind = "deterministic" | "structural" | "heuristic_check";
-
-export interface SuccessCriterion {
-  id: string;
-  description: string;
-  kind: SuccessCriterionKind;
-  spec?: Record<string, unknown>;
-}
+export type {
+  SuccessCriterion,
+  SuccessCriterionType,
+  TaskSuccessSpecification,
+} from "./success-criteria.js";
 
 /** Multi-axis capability needs (0–5). Heuristic — not objective complexity. */
 export interface TaskRequirements {
@@ -38,6 +41,9 @@ export interface TaskContract {
   objective: string;
   taskType: TaskType;
   requirements: TaskRequirements;
+  /** Phase 4 task success specification (inspectable; not used by router). */
+  successSpecification: TaskSuccessSpecification;
+  /** Mirror of `successSpecification.criteria` for backward compatibility. */
   successCriteria: SuccessCriterion[];
   constraints: string[];
   riskLevel: RiskLevel;
@@ -226,144 +232,39 @@ export function deriveRequirements(
   };
 }
 
-export function defaultSuccessCriteria(
-  taskType: TaskType,
+export function resolveSuccessSpecId(
   analysis: TaskAnalysisCore,
-): SuccessCriterion[] {
-  const base: SuccessCriterion[] = [
-    {
-      id: "addresses_objective",
-      description: "Response addresses the stated objective without ignoring key parts of the prompt",
-      kind: "heuristic_check",
-    },
-  ];
-
-  switch (taskType) {
+  userMessage: string,
+): SuccessSpecId {
+  if (isUnderspecifiedUserMessage(userMessage, analysis)) return "underspecified";
+  if (isAnalyticalTask(userMessage, analysis)) return "analytical";
+  switch (analysis.category) {
     case "summarization":
-      return [
-        ...base,
-        {
-          id: "summary_coverage",
-          description: "Summary reflects material in the provided context (not generic filler)",
-          kind: "structural",
-          spec: { expectsBulletsOrSections: true },
-        },
-        {
-          id: "length_appropriate",
-          description: "Length is appropriate for the requested format (TL;DR vs detailed)",
-          kind: "heuristic_check",
-        },
-      ];
+      return "summarization";
     case "pr_review":
-      return [
-        ...base,
-        {
-          id: "findings_actionable",
-          description: "Findings are specific (file/area or behavior), not vague platitudes",
-          kind: "structural",
-        },
-        {
-          id: "severity_or_priority",
-          description: "Issues are prioritized or labeled by severity when multiple findings exist",
-          kind: "heuristic_check",
-        },
-      ];
-    case "debugging":
-      return [
-        ...base,
-        {
-          id: "root_cause_or_hypothesis",
-          description: "Explains likely root cause or ranked hypotheses tied to symptoms",
-          kind: "structural",
-        },
-        {
-          id: "fix_or_next_steps",
-          description: "Proposes fix, workaround, or concrete next diagnostic steps",
-          kind: "structural",
-        },
-      ];
-    case "architecture":
-      return [
-        ...base,
-        {
-          id: "options_and_tradeoffs",
-          description: "Describes options, constraints, and tradeoffs (not a single unexplained choice)",
-          kind: "structural",
-        },
-        {
-          id: "migration_or_rollout",
-          description: "Addresses rollout, migration, or operational risk when migration/design requested",
-          kind: "heuristic_check",
-        },
-      ];
-    case "security":
-      return [
-        ...base,
-        {
-          id: "threat_model",
-          description: "Identifies assets, threats, or attack paths relevant to the surface",
-          kind: "structural",
-        },
-        {
-          id: "actionable_remediation",
-          description: "Remediation or verification steps are actionable",
-          kind: "structural",
-        },
-      ];
+      return "code_review";
     case "crud_implementation":
     case "refactor":
-      return [
-        ...base,
-        {
-          id: "code_correctness",
-          description: "Proposed code changes are coherent with the codebase context provided",
-          kind: "heuristic_check",
-        },
-        {
-          id: "tests_or_verification",
-          description: "Includes tests or explicit verification steps when implementation was requested",
-          kind: "structural",
-          spec: { testsMentioned: analysis.intents.includes("implement") },
-        },
-      ];
+      return "code_generation";
+    case "debugging":
+      return "debugging";
+    case "architecture":
+      return "architecture";
+    case "security":
+      return "security";
     default:
-      if (ANALYTICAL_PATTERN.test(analysis.intents.join(" "))) {
-        return analyticalSuccessCriteria();
-      }
-      return [
-        ...base,
-        {
-          id: "structured_reasoning",
-          description: "Uses structured reasoning (claims supported by steps or evidence)",
-          kind: "structural",
-        },
-      ];
+      return "analytical";
   }
 }
 
-function analyticalSuccessCriteria(): SuccessCriterion[] {
-  return [
-    {
-      id: "addresses_objective",
-      description: "Response addresses the analytical question directly",
-      kind: "heuristic_check",
-    },
-    {
-      id: "framework_or_criteria",
-      description: "Applies an explicit framework or evaluation criteria (not hand-waving)",
-      kind: "structural",
-    },
-    {
-      id: "tradeoffs",
-      description: "States tradeoffs, assumptions, and limits of the analysis",
-      kind: "structural",
-    },
-    {
-      id: "conclusion_supported",
-      description: "Conclusion follows from the analysis presented",
-      kind: "heuristic_check",
-    },
-  ];
+/** @deprecated Use `buildTaskSuccessSpecification` / catalog. */
+export function defaultSuccessCriteria(
+  taskType: TaskType,
+  analysis: TaskAnalysisCore,
+  userMessage: string,
+): SuccessCriterion[] {
+  const specId = resolveSuccessSpecId(analysis, userMessage);
+  return buildTaskSuccessSpecification(specId, analysis).criteria;
 }
 
 export function isAnalyticalTask(userMessage: string, analysis: TaskAnalysisCore): boolean {
@@ -388,15 +289,15 @@ export function buildTaskContract(input: TaskContractInput): TaskContract {
   const heuristicTaskDifficulty = analysis.taskDifficulty;
 
   const taskType = resolveContractTaskType(analysis, userMessage);
-  let successCriteria = defaultSuccessCriteria(taskType, analysis);
-  if (isAnalyticalTask(userMessage, analysis)) {
-    successCriteria = analyticalSuccessCriteria();
-  }
+  const specId = resolveSuccessSpecId(analysis, userMessage);
+  const successSpecification = buildTaskSuccessSpecification(specId, analysis);
+  const successCriteria = successSpecification.criteria;
 
   return {
     objective: deriveObjective(userMessage),
     taskType,
     requirements: deriveRequirements(analysis, userMessage, contextBand),
+    successSpecification,
     successCriteria,
     constraints: extractConstraints(userMessage),
     riskLevel: inferRiskLevel(analysis.intents, analysis.flags, userMessage),

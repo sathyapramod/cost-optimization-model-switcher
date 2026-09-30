@@ -20,6 +20,7 @@ Use this index to find the right guide. The project ships as an **agent skill** 
 | Task difficulty vs ingest size (v1 scores) | [SCORING.md](./SCORING.md) |
 | Scoped ingest before full fetch | [CONTEXT_OPTIMIZATION.md](./CONTEXT_OPTIMIZATION.md) |
 | Feature-based task analysis (V2) | [TASK_ANALYZER.md](./TASK_ANALYZER.md) |
+| Task success criteria (Phase 4) | [SUCCESS_CRITERIA.md](./SUCCESS_CRITERIA.md) |
 | Capability tiers vs task features | [CAPABILITY_PROFILES.md](./CAPABILITY_PROFILES.md) |
 | Router merge (profiles + legacy rules) | [ROUTING.md](./ROUTING.md) |
 | When the gate stays quiet (no switch) | [ROUTING_CONFIDENCE.md](./ROUTING_CONFIDENCE.md) |
@@ -35,6 +36,7 @@ Use this index to find the right guide. The project ships as an **agent skill** 
 | `catalogs/default.json` | Model ID → provider + capability tier |
 | `catalogs/capabilities.json` | Per-tier feature limits (V2 routing) |
 | `catalogs/pricing.json` | Heuristic list prices for cost estimates |
+| `catalogs/success-criteria.json` | Task-type success criterion definitions |
 | `schemas/suggest_model_switch.json` | Tool schema for custom UIs |
 | `examples/tool-call.json` | Sample `suggest_model_switch` payload |
 
