@@ -46,6 +46,8 @@ const STRAIGHTFORWARD_PATTERNS: Array<{ intent: TaskIntent; re: RegExp }> = [
   { intent: "format", re: /\bconvert to\b/i },
   { intent: "review", re: /\breview (the )?(pr|diff|changes)\b/i },
   { intent: "review", re: /\blist (all )?(bugs?|issues?|findings?|blockers?)\b/i },
+  // Review of a change/API without the literal words "pr"/"diff" (e.g. "review this API change for authorization flaws").
+  { intent: "review", re: /\breview\b.*\b(auth(oriz\w*)?|security|vulnerab\w*|flaw\w*|defect\w*)\b/i },
   { intent: "extract", re: /\bextract\b/i },
   { intent: "extract", re: /\btriage\b/i },
   { intent: "format", re: /\bclassif(y|ication)\b/i },
@@ -66,6 +68,8 @@ const COMPLEX_PATTERNS: Array<{ intent: TaskIntent; re: RegExp }> = [
   { intent: "architect", re: /\bmigrat(e|ion)\b/i },
   { intent: "debug", re: /\broot[- ]cause\b/i },
   { intent: "debug", re: /\bdebug\b/i },
+  // "Why are X hitting/calling/pointing at Y" — debugging phrased as a question, no literal "debug"/"root cause".
+  { intent: "debug", re: /\bwhy (is|are|does|did)\b.*\b(hitting|calling|pointing|routing|misconfigur\w*)\b/i },
   { intent: "implement", re: /\bfix\b/i },
   { intent: "implement", re: /\bimplement\b/i },
   { intent: "refactor", re: /\brefactor\b/i },
