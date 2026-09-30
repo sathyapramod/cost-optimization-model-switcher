@@ -1,0 +1,5 @@
+Logs:
+goroutine 12: PUT cache key=session-1
+goroutine 4: PUT cache key=session-2
+goroutine 12: PUT cache key=session-3
+fatal error: concurrent map writes

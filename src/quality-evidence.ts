@@ -9,6 +9,12 @@ import {
   TASK_QUALITY_FRAMEWORK_VERSION,
 } from "./task-quality/runner.js";
 import { loadTaskQualityFixtures } from "./task-quality/fixtures.js";
+import {
+  DEFAULT_LIVE_RUNS_PATH,
+  liveRunsForRoutingEvidence,
+  loadLiveRuns,
+  type LiveBenchmarkRun,
+} from "./task-quality/live-evaluation.js";
 import type { BenchmarkSplit, TaskCase } from "./task-quality/types.js";
 import type { Confidence } from "./types.js";
 
@@ -20,6 +26,8 @@ export interface QualityEvidenceRun {
   benchmarkSplit: BenchmarkSplit;
   passed: boolean;
   qualityScore: number;
+  /** When set, distinguishes fixture vs live rows inside a merged record. */
+  runSource?: EvidenceSource;
 }
 
 export interface QualityEvidenceRecord {
@@ -125,6 +133,7 @@ export function buildQualityEvidenceIndex(
         benchmarkSplit: caseSplit,
         passed: result.passed,
         qualityScore: result.qualityScore,
+        runSource: split === "holdout" ? "fixture_holdout" : "fixture_train",
       });
       bucket.taskIds.push(taskCase.id);
       buckets.set(key, bucket);
@@ -180,11 +189,128 @@ export function buildQualityEvidenceFromFixtures(
   return buildQualityEvidenceIndex(options);
 }
 
+function recordEvidenceSourceFromRuns(runs: QualityEvidenceRun[]): EvidenceSource {
+  if (runs.some((r) => r.runSource === "live")) return "live";
+  return "fixture_train";
+}
+
+function rebuildRecord(
+  partial: Omit<QualityEvidenceRecord, "passCount" | "failCount" | "sampleCount" | "passRate" | "meanQuality" | "expectedQuality" | "evidenceConfidence" | "evidenceSource">,
+  runs: QualityEvidenceRun[],
+): QualityEvidenceRecord {
+  const passCount = runs.filter((r) => r.passed).length;
+  const failCount = runs.length - passCount;
+  const sampleCount = runs.length;
+  const passRate = sampleCount ? passCount / sampleCount : 0;
+  const meanQuality =
+    sampleCount ? runs.reduce((a, r) => a + r.qualityScore, 0) / sampleCount : 0;
+  return {
+    ...partial,
+    runs,
+    passCount,
+    failCount,
+    sampleCount,
+    passRate,
+    meanQuality,
+    expectedQuality: meanQuality,
+    evidenceConfidence: evidenceConfidenceFromSamples(sampleCount, passRate),
+    evidenceSource: recordEvidenceSourceFromRuns(runs),
+    fixtureTaskIds: [...new Set(runs.map((r) => r.taskId))],
+  };
+}
+
+/** Merge train-split live runs into a fixture-built index (holdout live runs are ignored). */
+export function mergeLiveRunsIntoEvidenceIndex(
+  base: QualityEvidenceIndex,
+  liveRuns: LiveBenchmarkRun[],
+): QualityEvidenceIndex {
+  const eligible = liveRuns.filter((r) => r.evidenceEligible);
+  if (!eligible.length) return base;
+
+  const byKey = new Map<string, QualityEvidenceRecord>();
+  for (const r of base.records) {
+    byKey.set(evidenceKey(r.provider, r.modelId, r.specId), r);
+  }
+
+  for (const live of eligible) {
+    const specId = live.evaluation.specId as SuccessSpecId;
+    const key = evidenceKey(live.provider, live.modelId, specId);
+    const existing = byKey.get(key);
+    const liveRun: QualityEvidenceRun = {
+      taskId: live.taskId,
+      benchmarkSplit: live.benchmarkSplit,
+      passed: live.evaluation.passed,
+      qualityScore: live.evaluation.qualityScore,
+      runSource: "live",
+    };
+    if (!existing) {
+      byKey.set(
+        key,
+        rebuildRecord(
+          {
+            provider: live.provider,
+            modelId: live.modelId,
+            modelVersion: modelVersionString(live.modelId, live.provider),
+            specId,
+            evaluatorId: live.evaluation.evaluator,
+            evaluatorVersion: TASK_QUALITY_FRAMEWORK_VERSION,
+            runs: [liveRun],
+            fixtureTaskIds: [live.taskId],
+          },
+          [liveRun],
+        ),
+      );
+      continue;
+    }
+    const mergedRuns = [...existing.runs, liveRun];
+    byKey.set(
+      key,
+      rebuildRecord(
+        {
+          provider: existing.provider,
+          modelId: existing.modelId,
+          modelVersion: existing.modelVersion,
+          specId: existing.specId,
+          evaluatorId: existing.evaluatorId,
+          evaluatorVersion: existing.evaluatorVersion,
+          runs: mergedRuns,
+          fixtureTaskIds: existing.fixtureTaskIds,
+        },
+        mergedRuns,
+      ),
+    );
+  }
+
+  return {
+    ...base,
+    evidenceSource: [...byKey.values()].some((r) => r.evidenceSource === "live")
+      ? "live"
+      : base.evidenceSource,
+    note: `${base.note} Live train-split runs merged when benchmarks/results/live-runs.json is present.`,
+    records: [...byKey.values()],
+  };
+}
+
+export interface LoadDefaultQualityEvidenceOptions {
+  liveRunsPath?: string;
+}
+
+export function buildRoutingQualityEvidence(
+  options?: LoadDefaultQualityEvidenceOptions,
+): QualityEvidenceIndex {
+  const fixture = buildQualityEvidenceIndex({ split: "train" });
+  const path = options?.liveRunsPath ?? DEFAULT_LIVE_RUNS_PATH;
+  const liveFile = loadLiveRuns(path);
+  return mergeLiveRunsIntoEvidenceIndex(fixture, liveRunsForRoutingEvidence(liveFile));
+}
+
 let cachedIndex: QualityEvidenceIndex | null = null;
 
-export function loadDefaultQualityEvidence(): QualityEvidenceIndex {
+export function loadDefaultQualityEvidence(
+  options?: LoadDefaultQualityEvidenceOptions,
+): QualityEvidenceIndex {
   if (!cachedIndex) {
-    cachedIndex = buildQualityEvidenceIndex({ split: "train" });
+    cachedIndex = buildRoutingQualityEvidence(options);
   }
   return cachedIndex;
 }

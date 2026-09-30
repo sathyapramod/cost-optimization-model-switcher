@@ -1,0 +1,3 @@
+diff cache.ts
++ function put(k, v) { cache[k] = v; }
++ // cache is a shared map mutated from many request handlers concurrently

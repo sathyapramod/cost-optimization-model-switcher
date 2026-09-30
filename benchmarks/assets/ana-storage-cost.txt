@@ -1,0 +1,3 @@
+Log ingest: 500 GB/day flat.
+Hot storage: $0.023 per GB-month.
+Retention policy target: 90 days.

@@ -1,0 +1,6 @@
+CI worker-3 log excerpt:
+14:02:11 Running integration suite on worker-3
+14:03:44 FATAL: Java heap space (OutOfMemoryError)
+14:03:44 Process exited with code 137
+14:03:45 Worker marked unhealthy
+(Unrelated infra note from last month: kubernetes cluster upgraded — not an error in this run.)

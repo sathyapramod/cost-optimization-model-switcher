@@ -55,8 +55,10 @@ export type {
 export {
   buildQualityEvidenceFromFixtures,
   buildQualityEvidenceIndex,
+  buildRoutingQualityEvidence,
   loadDefaultQualityEvidence,
   lookupQualityEvidence,
+  mergeLiveRunsIntoEvidenceIndex,
   resetQualityEvidenceCache,
 } from "./quality-evidence.js";
 export type {

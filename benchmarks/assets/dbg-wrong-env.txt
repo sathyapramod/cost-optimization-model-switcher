@@ -1,0 +1,6 @@
+staging-deployment.yaml (snippet):
+env:
+  - name: API_BASE_URL
+    value: "https://api.prod.example"
+  - name: ENVIRONMENT
+    value: "staging"

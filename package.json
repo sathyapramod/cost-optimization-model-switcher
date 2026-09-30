@@ -33,7 +33,8 @@
     "benchmark": "npm run build && node scripts/run-benchmarks.mjs",
     "evaluate": "npm run build && node scripts/run-evaluation.mjs",
     "evaluate:task-quality": "npm run build && node scripts/run-task-quality-evaluation.mjs",
-    "evaluate:held-out": "npm run build && node scripts/run-held-out-evaluation.mjs"
+    "evaluate:held-out": "npm run build && node scripts/run-held-out-evaluation.mjs",
+    "evaluate:live": "npm run build && node scripts/run-live-evaluation.mjs"
   },
   "keywords": [
     "claude",

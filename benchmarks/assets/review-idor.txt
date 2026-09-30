@@ -1,0 +1,6 @@
+PR diff — UserController.ts
++ app.get('/user/:id', (req, res) => {
++   const profile = db.users.find(req.params.id);
++   res.json(profile);
++ });
+// No session check against req.params.id

@@ -1,0 +1,3 @@
+System X baseline: 1,000 req/s steady.
+DB write path caps at ~8k writes/s before p99 latency doubles.
+Egress cap: 2 Gbps; current avg payload 200 KB/response at 1k req/s.

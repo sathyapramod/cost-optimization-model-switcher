@@ -1,0 +1,3 @@
+java.lang.NullPointerException: Cannot invoke "java.util.List.size()" because "cart.items" is null
+  at com.example.PricingService.total(PricingService.java:88)
+Guest checkout path skips cart initialization.

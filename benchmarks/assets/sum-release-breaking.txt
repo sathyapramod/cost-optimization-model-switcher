@@ -1,0 +1,5 @@
+Release v4.2.0 notes:
+- Fixed typo in changelog footer
+- Performance: faster cold start
+BREAKING: GET /v2/users response field `name` renamed to `displayName`. Clients must migrate.
+- Internal metrics dashboard tweak

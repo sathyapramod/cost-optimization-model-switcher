@@ -1,0 +1,5 @@
+diff UserRepo.ts
+- const q = "SELECT * FROM users WHERE id = ?";
+- db.query(q, [id]);
++ const q = "SELECT * FROM users WHERE id = " + userInput;
++ db.exec(q);

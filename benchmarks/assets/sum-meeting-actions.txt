@@ -1,0 +1,4 @@
+Engineering standup transcript:
+Alice: I'll fix the flaky payment test today.
+Bob: I'll roll out the cache config change.
+Carol: I'll draft the incident retro doc.

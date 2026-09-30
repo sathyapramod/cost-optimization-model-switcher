@@ -21,6 +21,8 @@ Router regression runs through `runEvaluation()` in `src/evaluation.ts`.
 ```bash
 npm run evaluate              # router regression + adversarial
 npm run evaluate:task-quality # task contract criterion evaluation (offline outputs)
+npm run evaluate:held-out     # holdout split only (not in routing evidence)
+npm run evaluate:live         # call live APIs + same evaluators (see below)
 npm run benchmark             # regression only (fixtures)
 npm test                      # unit tests include all suites
 ```
@@ -31,6 +33,16 @@ Outputs:
 - `benchmarks/results/evaluation-latest.md`
 - `benchmarks/results/latest.json` (benchmark-only script)
 - `benchmarks/results/task-quality-latest.json` / `.md` (Phase 5)
+- `benchmarks/results/held-out-latest.json` / `.md`
+- `benchmarks/results/live-runs.json` / `live-latest.md` (live API runs)
+
+## Live evaluation
+
+1. Add or verify `benchmarks/assets/<caseId>.txt` for cases that need source material.
+2. `npm run evaluate:live -- --split holdout` — default generalization slice (not merged into routing evidence).
+3. `npm run evaluate:live -- --split train` — updates `live-runs.json`; **train** rows merge into Evidence Index v2 via `buildRoutingQualityEvidence()` / `loadDefaultQualityEvidence()`.
+
+Compare holdout pass rates to fixture train rates; a large gap suggests overfitting recorded outputs.
 
 ## Task quality (Phase 5)
 

@@ -37,4 +37,15 @@ Reports:
 
 Cases default to `benchmarkSplit: "train"`. Holdout cases are excluded from routing evidence index v2. See [docs/ROUTING_ASSURANCE.md](../docs/ROUTING_ASSURANCE.md).
 
+### Live model evaluation (empirical)
+
+Source text for prompts lives in `benchmarks/assets/<caseId>.txt` when present. Run real APIs, evaluate with the same criteria, append results:
+
+```bash
+export ANTHROPIC_API_KEY=...   # or OPENAI_API_KEY
+npm run evaluate:live -- --provider anthropic --model claude-haiku-4-5 --split holdout
+```
+
+Outputs: `benchmarks/results/live-runs.json` (train-split rows merge into routing evidence), `live-latest.md`. Use `--dry-run` to inspect prompts without API calls.
+
 Legacy monolithic `task-quality/fixtures.json` is merged at load time for backward compatibility; prefer adding cases under domain folders.

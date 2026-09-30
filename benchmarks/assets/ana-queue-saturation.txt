@@ -1,0 +1,5 @@
+Metrics (steady state):
+- Consumers: 200 jobs/s (fixed fleet)
+- Publishers: 180 jobs/s
+- Queue depth: stable ~5k jobs
+Proposal: double publisher count (same per-publisher rate).
