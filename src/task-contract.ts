@@ -76,6 +76,28 @@ const TOOL_PATTERN =
 const CONSTRAINT_PATTERN =
   /\b(must not|must|without|only|do not|never|at most|at least|by EOD|deadline)\b[^.!?]*/gi;
 
+const VAGUE_ANALYZE_RE = /^\s*analy[sz]e\b[\s!.?]*$/i;
+
+/** Prompt too vague for reliable requirement inference (Phase 3 routing). */
+export function isUnderspecifiedUserMessage(
+  userMessage: string,
+  analysis?: Pick<TaskAnalysisCore, "intents">,
+): boolean {
+  const text = userMessage.trim();
+  if (!text) return true;
+  if (VAGUE_ANALYZE_RE.test(text)) return true;
+  if (/^\s*analy[sz]e\s+(this|it)\s*\.?$/i.test(text)) return true;
+  if (
+    text.length < 12 &&
+    analysis &&
+    analysis.intents.length === 1 &&
+    analysis.intents[0] === "other"
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function deriveObjective(userMessage: string, maxLen = 280): string {
   const oneLine = userMessage.replace(/\s+/g, " ").trim();
   if (!oneLine) return "(empty prompt)";
@@ -150,8 +172,22 @@ export function deriveRequirements(
   userMessage: string,
   _contextBand: ContextBand,
 ): TaskRequirements {
+  const { ingestComplexity } = analysis;
+  if (isUnderspecifiedUserMessage(userMessage, analysis)) {
+    return {
+      reasoning: 0,
+      coding: 0,
+      architecture: 0,
+      domainKnowledge: 0,
+      quantitativeReasoning: 0,
+      contextUnderstanding: clampScore(ingestComplexity),
+      toolUse: 0,
+      outputComplexity: 0,
+    };
+  }
+
   const text = userMessage;
-  const { features, intents, flags, ingestComplexity } = analysis;
+  const { features, intents, flags } = analysis;
 
   let architecture = flags.deepSignals || intents.includes("architect") ? 4 : 0;
   if (intents.includes("architect") && flags.deepSignals) architecture = 5;

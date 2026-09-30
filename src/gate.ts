@@ -265,14 +265,20 @@ export function evaluateGate(input: GateInput): GateDecision {
       resolved,
       routing,
       taskAnalysis,
+      userMessage: input.userMessage,
       contextBand,
       estimatedInputTokens,
+      effectiveInputTokens: contextOptimization.effectiveInputTokens,
+      probes,
       switchDirection: "downgrade",
     });
     if (!routingConfidence.suggestSwitch) {
+      const clarify = routingConfidence.clarification.needed
+        ? ` ${routingConfidence.clarification.summary}`
+        : "";
       return {
         action: "proceed",
-        reason: `cost-gate: no-op (${routingConfidence.noOpReason ?? "low routing confidence"})`,
+        reason: `cost-gate: no-op (${routingConfidence.noOpReason ?? "low routing confidence"})${clarify}`,
         ...base,
         routing,
         routingConfidence,
@@ -335,14 +341,20 @@ export function evaluateGate(input: GateInput): GateDecision {
       resolved,
       routing,
       taskAnalysis,
+      userMessage: input.userMessage,
       contextBand,
       estimatedInputTokens,
+      effectiveInputTokens: contextOptimization.effectiveInputTokens,
+      probes,
       switchDirection: "upgrade",
     });
     if (!routingConfidence.suggestSwitch) {
+      const clarify = routingConfidence.clarification.needed
+        ? ` ${routingConfidence.clarification.summary}`
+        : "";
       return {
         action: "proceed",
-        reason: `cost-gate: no-op (${routingConfidence.noOpReason ?? "low routing confidence"})`,
+        reason: `cost-gate: no-op (${routingConfidence.noOpReason ?? "low routing confidence"})${clarify}`,
         ...base,
         routing,
         routingConfidence,
@@ -350,7 +362,12 @@ export function evaluateGate(input: GateInput): GateDecision {
     }
     const recommendedTier = routing.recommendedTier;
     let confidence = routingConfidence.confidence;
-    if (resolved.tier === "fast" && recommendedTier === "balanced" && confidence !== "high") {
+    if (
+      routingConfidence.state === "confident" &&
+      resolved.tier === "fast" &&
+      recommendedTier === "balanced" &&
+      confidence !== "high"
+    ) {
       confidence = "high";
     }
 

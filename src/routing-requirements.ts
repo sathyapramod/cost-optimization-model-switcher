@@ -1,4 +1,4 @@
-import type { TaskRequirements } from "./task-contract.js";
+import { isUnderspecifiedUserMessage, type TaskRequirements } from "./task-contract.js";
 import type { TaskAnalysis } from "./task-analyzer.js";
 import type { ContextBand } from "./types.js";
 
@@ -32,6 +32,10 @@ function contextCapabilityFromBand(band: ContextBand, effectiveTokens: number): 
  * (not tier-based floors).
  */
 export function extractTaskRoutingRequirements(analysis: TaskAnalysis): TaskRequirements {
+  if (isUnderspecifiedUserMessage(analysis.contract.objective, analysis)) {
+    return { ...analysis.contract.requirements };
+  }
+
   const base = { ...analysis.contract.requirements };
 
   base.reasoning = Math.max(base.reasoning, analysis.features.reasoningDepth);

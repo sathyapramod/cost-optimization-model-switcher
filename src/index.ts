@@ -42,6 +42,18 @@ export type {
   RoutingConfidenceInput,
   RoutingConfidenceResult,
 } from "./routing-confidence.js";
+export {
+  assessRoutingUncertainty,
+  DEFAULT_ROUTING_UNCERTAINTY_CONFIG,
+} from "./routing-uncertainty.js";
+export type {
+  ClarificationRequest,
+  ConfidenceDimensions,
+  RoutingState,
+  RoutingUncertaintyAssessment,
+  RoutingUncertaintyConfig,
+  RoutingUncertaintyInput,
+} from "./routing-uncertainty.js";
 export type {
   CapabilityCatalog,
   CapabilityLimits,
@@ -71,6 +83,7 @@ export {
   extractConstraints,
   inferRiskLevel,
   isAnalyticalTask,
+  isUnderspecifiedUserMessage,
   resolveContractTaskType,
 } from "./task-contract.js";
 export type {

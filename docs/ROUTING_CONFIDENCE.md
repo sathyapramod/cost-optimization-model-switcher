@@ -4,32 +4,47 @@
 
 **Back:** [Docs index](./README.md) · [ROUTING.md](./ROUTING.md)
 
-**Module:** `src/routing-confidence.ts`  
+**Modules:** `src/routing-uncertainty.ts` (Phase 3 assessment), `src/routing-confidence.ts` (gate integration)  
 **Entry:** `evaluateRoutingConfidence()` — called from `evaluateGate()` after `routeForTask()`.
 
 ## Purpose
 
-Avoid noisy or risky model-switch prompts when profile routing is uncertain. When `suggestSwitch` is false, the gate **proceeds** (no-op) even if tier heuristics would have recommended a switch.
+Avoid noisy or risky model-switch prompts when the task is not well understood. When `suggestSwitch` is false, the gate **proceeds** (conservative no-op) and may include a **clarification** payload for UI/CLI.
+
+Routing confidence is **not** derived from context size alone. Four dimensions are tracked separately:
+
+| Dimension | Meaning |
+|-----------|---------|
+| `taskUnderstanding` | Intent clarity, contract ambiguities, underspecified prompts |
+| `context` | Probes present, whether the message references unattached context |
+| `capabilityMatching` | Whether exactly one model clearly fits requirements |
+| `routing` | Blended decision confidence (capped by task + capability signals) |
+
+## Routing states
+
+| State | Typical behavior |
+|-------|------------------|
+| `confident` | Normal capability routing + switch suggestion when appropriate |
+| `uncertain` | No switch unless clear capability insufficiency on upgrade |
+| `ambiguous` | No aggressive downgrade; clarification recommended |
+| `insufficient_information` | Prompt too vague (e.g. “Analyze this.”) — no switch, ask clarifying questions |
 
 ## Signals
 
 | Condition | Result |
 |-----------|--------|
-| No `capableTier` in catalog | `suggestSwitch: false`, confidence **low** |
-| `taskAnalysis.flags.mixedIntent` | **no-op** (straightforward + complex verbs) |
-| `capableTier !== legacyTier` | Cap confidence at **medium** (profile vs heuristic disagreement) |
-| Two-tier **downgrade** + **low** context confidence + ambiguous difficulty | **no-op** |
-| One-tier **upgrade** + `currentMeetsTask` + **low** context confidence | **no-op** |
-
-Context confidence uses the same bands as before: large ingest → high, medium → medium, small → low.
+| Underspecified / ambiguous intent | `suggestSwitch: false`, `clarification.needed: true` |
+| No `capableTier` in catalog | `suggestSwitch: false` |
+| Routing dimension below configured threshold | **no-op** unless `capabilityInsufficient` on upgrade |
+| Clear capability gap (non-vague task) | Upgrade may still be suggested |
 
 ## API surface
 
 `GateDecision` fields:
 
-- `routing` — tiers from #13 (`legacyTier`, `capableTier`, `recommendedTier`, …)
-- `routingConfidence` — `{ confidence, suggestSwitch, noOpReason? }`
-- `suggestSwitch.confidence` — aligned with `routingConfidence.confidence` on switch paths
+- `routing` — capability router output (`recommendedModelId`, `explanation`, …)
+- `routingConfidence` — `{ state, dimensions, lowConfidenceReasons, clarification, suggestSwitch, … }`
+- `suggestSwitch.confidence` — legacy aggregate aligned with `routingConfidence.confidence` on switch paths
 
 ```typescript
 import { evaluateRoutingConfidence } from "cost-optimization-model-switcher";

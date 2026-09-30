@@ -1,7 +1,14 @@
 import type { RoutingDecision } from "./router.js";
 import type { TaskAnalysis } from "./task-analyzer.js";
 import type { ResolvedModel } from "./catalog.js";
-import type { CapabilityTier, Confidence, ContextBand } from "./types.js";
+import {
+  assessRoutingUncertainty,
+  type ClarificationRequest,
+  type ConfidenceDimensions,
+  type RoutingState,
+  type RoutingUncertaintyConfig,
+} from "./routing-uncertainty.js";
+import type { CapabilityTier, Confidence, ContextBand, ContextProbe } from "./types.js";
 
 const TIER_RANK: Record<CapabilityTier, number> = {
   fast: 0,
@@ -13,98 +20,86 @@ export interface RoutingConfidenceInput {
   resolved: ResolvedModel;
   routing: RoutingDecision;
   taskAnalysis: TaskAnalysis;
+  userMessage: string;
   contextBand: ContextBand;
   estimatedInputTokens: number;
+  effectiveInputTokens?: number;
+  probes?: ContextProbe[];
   switchDirection: "downgrade" | "upgrade";
+  config?: RoutingUncertaintyConfig;
 }
 
 export interface RoutingConfidenceResult {
+  /** Legacy aggregate (min of routing + task understanding dimensions). */
   confidence: Confidence;
-  /** When false, gate proceeds (no switch) despite tier mismatch heuristics. */
   suggestSwitch: boolean;
   noOpReason?: string;
-}
-
-function baseConfidenceFromContext(band: ContextBand, tokens: number): Confidence {
-  if (band === "large" && tokens > 0) return "high";
-  if (band === "medium" && tokens > 0) return "medium";
-  return "low";
-}
-
-function capConfidence(current: Confidence, cap: Confidence): Confidence {
-  const order: Confidence[] = ["low", "medium", "high"];
-  return order[Math.min(order.indexOf(current), order.indexOf(cap))];
+  state: RoutingState;
+  dimensions: ConfidenceDimensions;
+  lowConfidenceReasons: string[];
+  clarification: ClarificationRequest;
+  capabilityInsufficient: boolean;
 }
 
 /**
- * Confidence + safety no-op (#14). Benchmark downgrade/upgrade paths stay unchanged
- * unless signals are genuinely ambiguous (no profile match, mixed intent, weak context).
+ * Phase 3: multi-dimensional uncertainty before suggesting a model switch.
+ * Routing confidence is not derived from context size alone.
  */
 export function evaluateRoutingConfidence(
   input: RoutingConfidenceInput,
 ): RoutingConfidenceResult {
-  const { routing, resolved, taskAnalysis, contextBand, estimatedInputTokens, switchDirection } =
-    input;
+  const assessment = assessRoutingUncertainty({
+    resolved: input.resolved,
+    routing: input.routing,
+    taskAnalysis: input.taskAnalysis,
+    userMessage: input.userMessage,
+    contextBand: input.contextBand,
+    estimatedInputTokens: input.estimatedInputTokens,
+    effectiveInputTokens: input.effectiveInputTokens ?? input.estimatedInputTokens,
+    probes: input.probes ?? [],
+    switchDirection: input.switchDirection,
+    config: input.config,
+  });
 
-  let confidence = baseConfidenceFromContext(contextBand, estimatedInputTokens);
-  let suggestSwitch = true;
-  let noOpReason: string | undefined;
+  let { suggestSwitch, noOpReason, confidence } = assessment;
 
-  const current = resolved.tier;
-  const recommended = routing.recommendedTier;
-
-  if (!routing.recommendedModelId || recommended === current) {
-    return {
-      confidence: "low",
-      suggestSwitch: false,
-      noOpReason: routing.recommendedModelId
-        ? "already on recommended tier"
-        : "no capable model satisfies requirements for this switch direction",
-    };
-  }
-
-  if (routing.capableTier === null) {
-    return {
-      confidence: "low",
-      suggestSwitch: false,
-      noOpReason: "no capable model in profile catalog",
-    };
-  }
-
-  if (taskAnalysis.flags.mixedIntent) {
-    return {
-      confidence: "low",
-      suggestSwitch: false,
-      noOpReason: "mixed straightforward and complex signals",
-    };
-  }
-
-  if (routing.capableTier !== routing.legacyTier) {
-    confidence = capConfidence(confidence, "medium");
-  }
-
+  const current = input.resolved.tier;
+  const recommended = input.routing.recommendedTier;
   const tierSteps = Math.abs(TIER_RANK[current] - TIER_RANK[recommended]);
+
   if (
-    switchDirection === "downgrade" &&
+    suggestSwitch &&
+    assessment.state === "confident" &&
+    input.switchDirection === "downgrade" &&
     tierSteps >= 2 &&
-    confidence === "low" &&
-    taskClassIsAmbiguous(taskAnalysis)
+    assessment.dimensions.context === "low" &&
+    taskClassIsAmbiguous(input.taskAnalysis)
   ) {
     suggestSwitch = false;
-    noOpReason = "two-tier downgrade with low context confidence";
+    noOpReason = "two-tier downgrade with low context understanding confidence";
   }
 
   if (
-    switchDirection === "upgrade" &&
-    routing.currentMeetsTask &&
+    suggestSwitch &&
+    input.switchDirection === "upgrade" &&
+    input.routing.currentMeetsTask &&
     tierSteps === 1 &&
-    confidence === "low"
+    assessment.dimensions.capabilityMatching === "low"
   ) {
     suggestSwitch = false;
-    noOpReason = "current model profile already covers task (low upgrade confidence)";
+    noOpReason = "current model profile already covers task (weak capability-match signal)";
   }
 
-  return { confidence, suggestSwitch, noOpReason };
+  return {
+    confidence,
+    suggestSwitch,
+    noOpReason,
+    state: assessment.state,
+    dimensions: assessment.dimensions,
+    lowConfidenceReasons: assessment.lowConfidenceReasons,
+    clarification: assessment.clarification,
+    capabilityInsufficient: assessment.capabilityInsufficient,
+  };
 }
 
 function taskClassIsAmbiguous(taskAnalysis: TaskAnalysis): boolean {

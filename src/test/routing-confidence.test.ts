@@ -27,8 +27,10 @@ describe("evaluateRoutingConfidence", () => {
       resolved,
       routing,
       taskAnalysis: analysis,
+      userMessage: "Summarize this log",
       contextBand: "large",
       estimatedInputTokens: 500_000,
+      probes: [{ source: "log_file", bytes: 500_000 }],
       switchDirection: "downgrade",
     });
     assert.equal(result.suggestSwitch, false);
@@ -53,12 +55,14 @@ describe("evaluateRoutingConfidence", () => {
       resolved,
       routing,
       taskAnalysis: analysis,
+      userMessage: "Review PR diff and implement the fix for the race",
       contextBand: "large",
       estimatedInputTokens: 400_000,
+      probes: [{ source: "github_pr", additions: 2000, deletions: 600, changedFiles: 22 }],
       switchDirection: "downgrade",
     });
     assert.equal(result.suggestSwitch, false);
-    assert.match(result.noOpReason ?? "", /mixed/i);
+    assert.match(result.noOpReason ?? "", /ambiguous|mixed/i);
   });
 
   it("allows premium downgrade for benchmark summarize fixture", () => {
@@ -82,8 +86,10 @@ describe("evaluateRoutingConfidence", () => {
       resolved,
       routing,
       taskAnalysis: analysis,
+      userMessage: fixture.userMessage,
       contextBand: analysis.contextBand,
       estimatedInputTokens: analysis.estimatedInputTokens,
+      probes: fixture.probes,
       switchDirection: "downgrade",
     });
     assert.equal(result.suggestSwitch, true);
