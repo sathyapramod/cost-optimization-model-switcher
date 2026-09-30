@@ -1,0 +1,162 @@
+{
+  "version": "2",
+  "note": "Curated model capability profiles (0–5 per axis). These are configuration hypotheses, not objective truth — calibrate using benchmark/live-results over time.",
+  "providers": {
+    "anthropic": {
+      "models": [
+        {
+          "modelId": "claude-haiku-4-5",
+          "tier": "fast",
+          "capabilities": {
+            "reasoning": 2,
+            "coding": 2,
+            "architecture": 1,
+            "domainKnowledge": 2,
+            "quantitativeReasoning": 2,
+            "context": 5,
+            "toolUse": 3,
+            "outputComplexity": 3,
+            "speed": 5,
+            "cost": 5
+          }
+        },
+        {
+          "modelId": "claude-sonnet-4-6",
+          "tier": "balanced",
+          "capabilities": {
+            "reasoning": 4,
+            "coding": 4,
+            "architecture": 3,
+            "domainKnowledge": 3,
+            "quantitativeReasoning": 3,
+            "context": 4,
+            "toolUse": 4,
+            "outputComplexity": 4,
+            "speed": 4,
+            "cost": 3
+          }
+        },
+        {
+          "modelId": "claude-opus-4-6",
+          "tier": "premium",
+          "capabilities": {
+            "reasoning": 5,
+            "coding": 5,
+            "architecture": 5,
+            "domainKnowledge": 4,
+            "quantitativeReasoning": 4,
+            "context": 5,
+            "toolUse": 4,
+            "outputComplexity": 5,
+            "speed": 2,
+            "cost": 1
+          }
+        }
+      ]
+    },
+    "openai": {
+      "models": [
+        {
+          "modelId": "gpt-4o-mini",
+          "tier": "fast",
+          "capabilities": {
+            "reasoning": 2,
+            "coding": 2,
+            "architecture": 1,
+            "domainKnowledge": 2,
+            "quantitativeReasoning": 2,
+            "context": 4,
+            "toolUse": 3,
+            "outputComplexity": 3,
+            "speed": 5,
+            "cost": 5
+          }
+        },
+        {
+          "modelId": "gpt-4o",
+          "tier": "balanced",
+          "capabilities": {
+            "reasoning": 4,
+            "coding": 4,
+            "architecture": 3,
+            "domainKnowledge": 3,
+            "quantitativeReasoning": 3,
+            "context": 4,
+            "toolUse": 4,
+            "outputComplexity": 4,
+            "speed": 4,
+            "cost": 3
+          }
+        },
+        {
+          "modelId": "o3",
+          "tier": "premium",
+          "capabilities": {
+            "reasoning": 5,
+            "coding": 5,
+            "architecture": 5,
+            "domainKnowledge": 4,
+            "quantitativeReasoning": 5,
+            "context": 4,
+            "toolUse": 3,
+            "outputComplexity": 5,
+            "speed": 2,
+            "cost": 1
+          }
+        }
+      ]
+    },
+    "cursor": {
+      "models": [
+        {
+          "modelId": "gpt-4o-mini",
+          "tier": "fast",
+          "capabilities": {
+            "reasoning": 2,
+            "coding": 2,
+            "architecture": 1,
+            "domainKnowledge": 2,
+            "quantitativeReasoning": 2,
+            "context": 4,
+            "toolUse": 3,
+            "outputComplexity": 3,
+            "speed": 5,
+            "cost": 5
+          }
+        },
+        {
+          "modelId": "claude-sonnet-4-6",
+          "tier": "balanced",
+          "capabilities": {
+            "reasoning": 4,
+            "coding": 4,
+            "architecture": 3,
+            "domainKnowledge": 3,
+            "quantitativeReasoning": 3,
+            "context": 4,
+            "toolUse": 4,
+            "outputComplexity": 4,
+            "speed": 4,
+            "cost": 3
+          }
+        },
+        {
+          "modelId": "claude-opus-4-6",
+          "tier": "premium",
+          "capabilities": {
+            "reasoning": 5,
+            "coding": 5,
+            "architecture": 5,
+            "domainKnowledge": 4,
+            "quantitativeReasoning": 4,
+            "context": 5,
+            "toolUse": 4,
+            "outputComplexity": 5,
+            "speed": 2,
+            "cost": 1
+          }
+        }
+      ]
+    }
+  }
+}

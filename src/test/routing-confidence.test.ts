@@ -16,8 +16,10 @@ describe("evaluateRoutingConfidence", () => {
     const routing = {
       capableTier: null,
       legacyTier: "fast" as const,
-      recommendedTier: "fast" as const,
+      recommendedTier: "premium" as const,
+      recommendedModelId: null,
       currentMeetsTask: true,
+      explanation: "no match",
     };
     const analysis = analyzeTask({ userMessage: "Summarize this log" });
     const resolved = resolveModel("claude-opus-4-6", catalog);

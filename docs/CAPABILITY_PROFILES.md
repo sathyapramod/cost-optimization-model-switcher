@@ -4,10 +4,14 @@
 
 **Back:** [Docs index](./README.md) · [ROUTING.md](./ROUTING.md)
 
-**Data:** `catalogs/capabilities.json`  
-**API:** `src/capabilities.ts`
+**Data:** `catalogs/model-profiles.json` (Phase 2 per-model routing), `catalogs/capabilities.json` (legacy tier ceilings)  
+**API:** `src/model-profiles.ts`, `src/capability-router.ts`, `src/capabilities.ts`
 
-Maps each provider tier (`fast` / `balanced` / `premium`) to **feature ceilings** (0–5) aligned with [`TaskFeatureVector`](./TASK_ANALYZER.md). The routing engine ([#13](https://github.com/sathyapramod/cost-optimization-model-switcher/issues/13)) uses these limits with `analyzeTask()` to pick the lowest-cost capable tier.
+**Important:** Capability scores in these catalogs are **curated configuration**, not objective truth. Validate and tune them using `npm run benchmark` / live results (`benchmarks/live-results.json`).
+
+Phase 2 routing compares [`TaskRequirements`](./TASK_ANALYZER.md) + context requirements against **per-model** profiles, then optimizes cost/speed among eligible models. `premium` / `balanced` / `fast` on each model row is **compatibility metadata only**.
+
+Legacy `capabilities.json` tier tables still back `resolveCapabilityProfile()` for gate display; routing uses `model-profiles.json`.
 
 ## Feature dimensions
 

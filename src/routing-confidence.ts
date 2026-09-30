@@ -53,11 +53,13 @@ export function evaluateRoutingConfidence(
   const current = resolved.tier;
   const recommended = routing.recommendedTier;
 
-  if (recommended === current) {
+  if (!routing.recommendedModelId || recommended === current) {
     return {
       confidence: "low",
       suggestSwitch: false,
-      noOpReason: "already on recommended tier",
+      noOpReason: routing.recommendedModelId
+        ? "already on recommended tier"
+        : "no capable model satisfies requirements for this switch direction",
     };
   }
 
@@ -65,7 +67,7 @@ export function evaluateRoutingConfidence(
     return {
       confidence: "low",
       suggestSwitch: false,
-      noOpReason: "no capable tier in profile catalog",
+      noOpReason: "no capable model in profile catalog",
     };
   }
 

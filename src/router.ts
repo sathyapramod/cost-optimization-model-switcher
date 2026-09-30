@@ -1,24 +1,24 @@
 import type { ResolvedModel } from "./catalog.js";
 import {
-  currentModelMeetsTask,
-  higherTier,
   loadDefaultCapabilities,
   mergeCapabilities,
-  selectCapableTier,
   type CapabilityCatalog,
 } from "./capabilities.js";
-import { pickDowngradeTier, pickUpgradeTier } from "./classify.js";
+import { routeByCapabilities, type CapabilityRouteResult } from "./capability-router.js";
 import type { TaskAnalysis } from "./task-analyzer.js";
 import type { CapabilityTier, ContextBand, ContextSource } from "./types.js";
 
 export interface RoutingDecision {
-  /** Lowest-cost tier whose profile covers task features (null if none). */
+  /** Lowest-cost capable tier among models that meet requirements (null if none). */
   capableTier: CapabilityTier | null;
-  /** Tier from v1 pickDowngrade / pickUpgrade heuristics only. */
+  /** Tier from v1 pickDowngrade / pickUpgrade heuristics (confidence comparison only). */
   legacyTier: CapabilityTier;
-  /** Tier to recommend after merging capability match with legacy heuristics. */
+  /** Tier metadata of the recommended model (not the routing decision itself). */
   recommendedTier: CapabilityTier;
+  recommendedModelId: string | null;
   currentMeetsTask: boolean;
+  explanation: string;
+  capabilityRoute?: CapabilityRouteResult;
 }
 
 export interface RouteInput {
@@ -29,47 +29,39 @@ export interface RouteInput {
   userMessage: string;
   taskDifficulty: number;
   switchDirection: "downgrade" | "upgrade";
-  capabilities?: CapabilityCatalog;
-}
-
-function legacyRecommendedTier(
-  input: RouteInput,
-): CapabilityTier {
-  if (input.switchDirection === "downgrade") {
-    return pickDowngradeTier(input.userMessage, input.primarySource);
-  }
-  const tier = input.resolved.tier;
-  if (tier !== "fast" && tier !== "balanced") {
-    return pickUpgradeTier("fast", input.userMessage, input.contextBand, input.taskDifficulty);
-  }
-  return pickUpgradeTier(tier, input.userMessage, input.contextBand, input.taskDifficulty);
+  effectiveInputTokens?: number;
 }
 
 /**
- * Capability-matching router (#13): `selectCapableTier` + v1 tier heuristics (max rank)
- * so benchmark fixtures and PR-review nuance stay aligned; see routing-confidence (#14).
+ * Capability-based router (Phase 2): task + context requirements → model profiles → optimize cost/speed.
  */
 export function routeForTask(input: RouteInput): RoutingDecision {
-  const caps = input.capabilities ?? loadDefaultCapabilities();
-  const capableTier = selectCapableTier(
-    input.resolved.provider,
-    input.taskAnalysis.features,
-    input.taskAnalysis.minimumCapability,
-    caps,
-  );
-  const legacyTier = legacyRecommendedTier(input);
-  const recommendedTier = capableTier
-    ? higherTier(capableTier, legacyTier)
-    : legacyTier;
+  const effectiveInputTokens =
+    input.effectiveInputTokens ?? input.taskAnalysis.estimatedInputTokens;
+
+  const cap = routeByCapabilities({
+    resolved: input.resolved,
+    taskAnalysis: input.taskAnalysis,
+    contextBand: input.contextBand,
+    primarySource: input.primarySource,
+    userMessage: input.userMessage,
+    taskDifficulty: input.taskDifficulty,
+    switchDirection: input.switchDirection,
+    effectiveInputTokens,
+  });
 
   return {
-    capableTier,
-    legacyTier,
-    recommendedTier,
-    currentMeetsTask: currentModelMeetsTask(input.resolved, input.taskAnalysis.features, caps),
+    capableTier: cap.capableTier,
+    legacyTier: cap.legacyTier,
+    recommendedTier: cap.recommendedTier,
+    recommendedModelId: cap.recommendedModelId,
+    currentMeetsTask: cap.currentMeetsTask,
+    explanation: cap.explanation,
+    capabilityRoute: cap,
   };
 }
 
+/** @deprecated Tier-level catalog; Phase 2 routing uses `loadDefaultModelProfiles()`. */
 export function loadRoutingCapabilities(override?: Partial<CapabilityCatalog>): CapabilityCatalog {
   return mergeCapabilities(loadDefaultCapabilities(), override);
 }

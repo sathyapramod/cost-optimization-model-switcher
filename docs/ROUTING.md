@@ -7,17 +7,23 @@
 **Module:** `src/router.ts`  
 **Entry:** `routeForTask()` — used by `evaluateGate()` when suggesting a switch.
 
-## Flow
+## Flow (Phase 2)
 
 ```text
-analyzeTask() → features + minimumCapability
+analyzeTask() → task contract requirements
        +
-selectCapableTier() → lowest-cost tier that covers features
+extractRoutingRequirements() → task axes + context capability (from probes/band)
        +
-pickDowngradeTier / pickUpgradeTier → legacy quality floors
+model-profiles.json → per-model capability vector (curated, not ground truth)
        ↓
-higherTier(capable, legacy) → recommendedTier
+filterCapableModels() → mandatory axis match
+       ↓
+policy (cost/speed) + switch direction → recommended modelId
+       ↓
+recommendedTier = compatibility metadata on chosen model (not the decision rule)
 ```
+
+Legacy `pickDowngradeTier` / `pickUpgradeTier` tiers are exposed as `legacyTier` for confidence comparison only.
 
 Capability matching alone can recommend **fast** for PR review; legacy downgrade heuristics still bump to **balanced** when diffs need nuance. Upgrades use the same **max rank** merge so security/architecture tasks stay on **premium**.
 

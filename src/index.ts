@@ -12,6 +12,31 @@ export {
 } from "./capabilities.js";
 export { loadRoutingCapabilities, routeForTask } from "./router.js";
 export type { RouteInput, RoutingDecision } from "./router.js";
+export { routeByCapabilities } from "./capability-router.js";
+export type { CapabilityRouteInput, CapabilityRouteResult, RoutingPolicy } from "./capability-router.js";
+export {
+  filterCapableModels,
+  modelMeetsRequirements,
+  requirementAxes,
+} from "./capability-matching.js";
+export type { CapabilityMatchResult, RequirementAxisSpec } from "./capability-matching.js";
+export {
+  extractContextRequirements,
+  extractRoutingRequirements,
+  extractTaskRoutingRequirements,
+} from "./routing-requirements.js";
+export type { ContextRequirements, RoutingRequirements } from "./routing-requirements.js";
+export {
+  findModelProfile,
+  listProviderModels,
+  loadDefaultModelProfiles,
+  mergeModelProfiles,
+} from "./model-profiles.js";
+export type {
+  CatalogModelProfile,
+  ModelCapabilityVector,
+  ModelProfileCatalog,
+} from "./model-profiles.js";
 export { evaluateRoutingConfidence } from "./routing-confidence.js";
 export type {
   RoutingConfidenceInput,

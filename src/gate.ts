@@ -64,14 +64,13 @@ function buildSwitchPayload(
   recommendedTier: CapabilityTier,
   rationale: string,
   confidence: Confidence,
+  recommendedModelIdOverride?: string | null,
 ): SuggestModelSwitchInput {
   const catalog = mergeCatalog(loadDefaultCatalog(), input.catalog);
   const refs = (input.probes ?? []).flatMap((p) => p.refs ?? []);
-  const recommendedModelId = defaultModelForTier(
-    resolved.provider,
-    recommendedTier,
-    catalog,
-  );
+  const recommendedModelId =
+    recommendedModelIdOverride ??
+    defaultModelForTier(resolved.provider, recommendedTier, catalog);
 
   const opt = base.contextOptimization;
   const cost = buildSwitchCostEstimate({
@@ -129,6 +128,7 @@ function buildSwitchPayload(
     confidence,
     rationale:
       rationale +
+      (base.routing?.explanation ? ` ${base.routing.explanation}` : "") +
       formatSavingsLine(cost) +
       formatScopedIngestHint(
         opt.rawInputTokens,
@@ -259,6 +259,7 @@ export function evaluateGate(input: GateInput): GateDecision {
       userMessage: input.userMessage,
       taskDifficulty,
       switchDirection: "downgrade",
+      effectiveInputTokens: contextOptimization.effectiveInputTokens,
     });
     const routingConfidence = evaluateRoutingConfidence({
       resolved,
@@ -287,7 +288,7 @@ export function evaluateGate(input: GateInput): GateDecision {
       routingConfidence,
       suggestSwitch: buildSwitchPayload(
         input,
-        base,
+        { ...base, routing },
         resolved,
         "downgrade",
         recommendedTier,
@@ -298,6 +299,7 @@ export function evaluateGate(input: GateInput): GateDecision {
           taskClass,
         ),
         routingConfidence.confidence,
+        routing.recommendedModelId,
       ),
     };
   }
@@ -327,6 +329,7 @@ export function evaluateGate(input: GateInput): GateDecision {
       userMessage: input.userMessage,
       taskDifficulty,
       switchDirection: "upgrade",
+      effectiveInputTokens: contextOptimization.effectiveInputTokens,
     });
     const routingConfidence = evaluateRoutingConfidence({
       resolved,
@@ -359,7 +362,7 @@ export function evaluateGate(input: GateInput): GateDecision {
       routingConfidence,
       suggestSwitch: buildSwitchPayload(
         input,
-        base,
+        { ...base, routing },
         resolved,
         "upgrade",
         recommendedTier,
@@ -370,6 +373,7 @@ export function evaluateGate(input: GateInput): GateDecision {
           estimatedInputTokens,
         ),
         confidence,
+        routing.recommendedModelId,
       ),
     };
   }
