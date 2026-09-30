@@ -293,12 +293,22 @@ export function mergeLiveRunsIntoEvidenceIndex(
 
 export interface LoadDefaultQualityEvidenceOptions {
   liveRunsPath?: string;
+  /** Force-enable/disable live merge regardless of NODE_ENV (tests use this explicitly). */
+  includeLive?: boolean;
 }
 
+/**
+ * Live runs are a gitignored, developer-machine artifact (`benchmarks/results/live-runs.json`).
+ * Unit tests must stay hermetic and reproducible in CI/clean clones regardless of what a
+ * developer has run locally, so live merge is skipped under NODE_ENV=test unless a caller
+ * explicitly opts in via `includeLive: true` (e.g. a test asserting merge behavior itself).
+ */
 export function buildRoutingQualityEvidence(
   options?: LoadDefaultQualityEvidenceOptions,
 ): QualityEvidenceIndex {
   const fixture = buildQualityEvidenceIndex({ split: "train" });
+  const includeLive = options?.includeLive ?? process.env.NODE_ENV !== "test";
+  if (!includeLive) return fixture;
   const path = options?.liveRunsPath ?? DEFAULT_LIVE_RUNS_PATH;
   const liveFile = loadLiveRuns(path);
   return mergeLiveRunsIntoEvidenceIndex(fixture, liveRunsForRoutingEvidence(liveFile));

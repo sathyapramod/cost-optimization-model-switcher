@@ -109,20 +109,32 @@ export function deriveQualityGuarantee(
   };
 }
 
+/** Evidence source for this spec's own rows — not the whole index (avoids one live
+ *  model anywhere in the index making unrelated specs falsely report "live"). */
+function evidenceSourceForRows(
+  rows: QualityEvidenceIndex["records"],
+  fallback: EvidenceSource,
+): EvidenceSource {
+  if (!rows.length) return fallback;
+  if (rows.some((r) => r.evidenceSource === "live")) return "live";
+  return rows[0]!.evidenceSource;
+}
+
 export function resolveEvidenceStatusForSpec(
   index: QualityEvidenceIndex,
   specId: SuccessSpecId,
   minSamples: number,
 ): { status: EvidenceStatus; source: EvidenceSource } {
   const rows = index.records.filter((r) => r.specId === specId);
+  const source = evidenceSourceForRows(rows, index.evidenceSource);
   if (!rows.length) {
-    return { status: "none", source: index.evidenceSource };
+    return { status: "none", source };
   }
   const totalSamples = rows.reduce((n, r) => n + r.sampleCount, 0);
   if (totalSamples < minSamples) {
-    return { status: "insufficient", source: index.evidenceSource };
+    return { status: "insufficient", source };
   }
-  return { status: "known", source: index.evidenceSource };
+  return { status: "known", source };
 }
 
 export function buildQualityAssurance(
