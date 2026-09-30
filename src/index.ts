@@ -13,6 +13,21 @@ export {
 export { loadRoutingCapabilities, routeForTask } from "./router.js";
 export type { RouteInput, RoutingDecision } from "./router.js";
 export {
+  buildQualityAssurance,
+  buildRoutingRecommendation,
+  deriveQualityGuarantee,
+  resolveEffectiveRecommendation,
+  resolveEvidenceStatusForSpec,
+} from "./routing-assurance.js";
+export type {
+  EffectiveRecommendationBasis,
+  EffectiveRoutingRecommendation,
+  QualityAssurance,
+  QualityGuarantee,
+  QualityGuaranteeLevel,
+  RoutingRecommendation,
+} from "./routing-assurance.js";
+export {
   DEFAULT_QUALITY_CONSTRAINED_POLICY,
   deriveRequiredQuality,
   executeQualityConstrainedRouting,
@@ -39,10 +54,18 @@ export type {
 } from "./quality-constrained-policy.js";
 export {
   buildQualityEvidenceFromFixtures,
+  buildQualityEvidenceIndex,
   loadDefaultQualityEvidence,
   lookupQualityEvidence,
+  resetQualityEvidenceCache,
 } from "./quality-evidence.js";
-export type { QualityEvidenceIndex, QualityEvidenceRecord } from "./quality-evidence.js";
+export type {
+  EvidenceSource,
+  EvidenceStatus,
+  QualityEvidenceIndex,
+  QualityEvidenceRecord,
+  QualityEvidenceRun,
+} from "./quality-evidence.js";
 export { routeByCapabilities } from "./capability-router.js";
 export type { CapabilityRouteInput, CapabilityRouteResult, RoutingPolicy } from "./capability-router.js";
 export {
@@ -171,6 +194,7 @@ export {
   resetTaskQualityFixturesCache,
   BENCHMARK_DOMAIN_DIRS,
   runTaskQualityEvaluation,
+  runHeldOutBenchmarkEvaluation,
   evaluateTaskCandidate,
   evaluateTaskCase,
   evaluateOutputAgainstCriteria,

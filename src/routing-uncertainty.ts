@@ -289,11 +289,17 @@ export function assessRoutingUncertainty(
   let suggestSwitch = true;
   let noOpReason: string | undefined;
 
-  if (input.routing.qualityConstrained?.preserveCurrentModel) {
+  const qualityAbstain =
+    input.routing.qualityAssurance?.guarantee.level === "abstain" ||
+    input.routing.qualityAssurance?.result.preserveCurrentModel ||
+    input.routing.effectiveRecommendation?.basis === "abstain_preserve_current";
+
+  if (qualityAbstain) {
     suggestSwitch = false;
     noOpReason =
-      input.routing.qualityConstrained.noOpReason ??
-      "quality-constrained routing could not select a model with sufficient evidence";
+      input.routing.qualityAssurance?.result.noOpReason ??
+      input.routing.qualityAssurance?.guarantee.statement ??
+      "quality assurance abstained — preserve current model";
   } else if (!input.routing.recommendedModelId || recommended === current) {
     suggestSwitch = false;
     noOpReason = input.routing.recommendedModelId

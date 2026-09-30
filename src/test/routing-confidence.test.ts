@@ -13,16 +13,21 @@ describe("evaluateRoutingConfidence", () => {
   const suite = loadFixtureSuite();
 
   it("blocks switch when capableTier is null", () => {
-    const routing = {
-      capableTier: null,
-      legacyTier: "fast" as const,
-      recommendedTier: "premium" as const,
-      recommendedModelId: null,
-      currentMeetsTask: true,
-      explanation: "no match",
-    };
     const analysis = analyzeTask({ userMessage: "Summarize this log" });
     const resolved = resolveModel("claude-opus-4-6", catalog);
+    const routing = {
+      ...routeForTask({
+        resolved,
+        taskAnalysis: analysis,
+        contextBand: "large",
+        primarySource: analysis.primarySource,
+        userMessage: "Summarize this log",
+        taskDifficulty: analysis.taskDifficulty,
+        switchDirection: "downgrade",
+      }),
+      capableTier: null,
+      recommendedModelId: null,
+    };
     const result = evaluateRoutingConfidence({
       resolved,
       routing,

@@ -93,6 +93,7 @@
     },
     {
       "id": "dbg-wrong-env",
+      "benchmarkSplit": "holdout",
       "task": "Why are staging API calls hitting production?",
       "taskType": "debugging",
       "context": { "description": "Config shows API_BASE_URL copied from prod template" },

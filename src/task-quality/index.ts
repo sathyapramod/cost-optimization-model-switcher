@@ -26,5 +26,6 @@ export {
   formatTaskQualityMarkdown,
   mergeCriteriaForCase,
   runTaskQualityEvaluation,
+  runHeldOutBenchmarkEvaluation,
 } from "./runner.js";
 export type { RunTaskQualityOptions } from "./runner.js";

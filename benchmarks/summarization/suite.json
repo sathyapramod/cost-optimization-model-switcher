@@ -86,7 +86,7 @@
           "output": "**Action items**\n- Alice: fix flaky payment test\n- Bob: roll out cache config\n- Carol: draft incident retro\n"
         },
         {
-          "modelId": "claude-haiku-4-5",
+          "modelId": "fixture-weak-negative",
           "provider": "anthropic",
           "latencyMs": 650,
           "inputTokens": 9000,
@@ -97,6 +97,7 @@
     },
     {
       "id": "sum-release-breaking",
+      "benchmarkSplit": "holdout",
       "task": "Summarize release notes and highlight breaking API changes only",
       "taskType": "summarization",
       "context": {

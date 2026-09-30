@@ -129,6 +129,7 @@
     },
     {
       "id": "ana-queue-saturation",
+      "benchmarkSplit": "holdout",
       "task": "Will the job queue saturate if we double publishers?",
       "taskType": "analytical",
       "context": {

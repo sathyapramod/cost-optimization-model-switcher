@@ -24,6 +24,7 @@ Use this index to find the right guide. The project ships as an **agent skill** 
 | Capability tiers vs task features | [CAPABILITY_PROFILES.md](./CAPABILITY_PROFILES.md) |
 | Router merge (profiles + legacy rules) | [ROUTING.md](./ROUTING.md) |
 | When the gate stays quiet (no switch) | [ROUTING_CONFIDENCE.md](./ROUTING_CONFIDENCE.md) |
+| Routing vs quality assurance | [ROUTING_ASSURANCE.md](./ROUTING_ASSURANCE.md) |
 | V2 pipeline and issue map | [V2_ARCHITECTURE.md](./V2_ARCHITECTURE.md) |
 | Fixture suite and `npm run benchmark` | [BENCHMARKS.md](./BENCHMARKS.md) |
 | Full evaluation (benchmark + adversarial) | [EVALUATION.md](./EVALUATION.md) |

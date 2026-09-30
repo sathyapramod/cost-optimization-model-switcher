@@ -13,6 +13,9 @@ export interface TaskCaseCandidate {
 }
 
 /** Domain folder under `benchmarks/` (task-quality suites). */
+/** Training fixtures feed evidence index v2; holdout is excluded from routing evidence. */
+export type BenchmarkSplit = "train" | "holdout";
+
 export type BenchmarkDomain =
   | "summarization"
   | "extraction"
@@ -33,6 +36,8 @@ export interface TaskCaseContext {
 export interface TaskCase {
   id: string;
   category: TaskCategory;
+  /** Defaults to train (included in quality evidence for routing). */
+  benchmarkSplit?: BenchmarkSplit;
   userMessage: string;
   /** Source domain suite (when loaded from `benchmarks/<domain>/suite.json`). */
   domain?: BenchmarkDomain;
@@ -117,6 +122,7 @@ export interface TaskCaseEvaluation {
   caseId: string;
   category: TaskCategory;
   domain?: BenchmarkDomain;
+  benchmarkSplit?: BenchmarkSplit;
   results: EvaluationResult[];
 }
 

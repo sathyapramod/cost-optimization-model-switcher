@@ -30,6 +30,11 @@ Each domain has `suite.json` with ≥3 cases. Run:
 npm run evaluate:task-quality
 ```
 
-Reports: `benchmarks/results/task-quality-latest.json` and `.md` (quality, cost, latency, failure rate by model×domain).
+Reports:
+
+- `benchmarks/results/task-quality-latest.json` / `.md` — all cases
+- `benchmarks/results/held-out-latest.json` / `.md` — **holdout** split only (`npm run evaluate:held-out`)
+
+Cases default to `benchmarkSplit: "train"`. Holdout cases are excluded from routing evidence index v2. See [docs/ROUTING_ASSURANCE.md](../docs/ROUTING_ASSURANCE.md).
 
 Legacy monolithic `task-quality/fixtures.json` is merged at load time for backward compatibility; prefer adding cases under domain folders.

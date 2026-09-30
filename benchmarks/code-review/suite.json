@@ -97,6 +97,7 @@
     },
     {
       "id": "review-idor",
+      "benchmarkSplit": "holdout",
       "task": "Review API change for authorization flaws",
       "taskType": "code_review",
       "context": {

@@ -18,13 +18,12 @@ model-profiles.json → per-model capability vector (curated, not ground truth)
        ↓
 filterCapableModels() → mandatory axis match
        ↓
-Phase 6: quality-constrained policy (minimize cost, quality ≥ required)
-  • success spec id + required quality threshold
-  • fixture-backed expected quality per model (task-quality benchmarks)
-  • reject below floor / missing evidence; pick cheapest eligible
-  • preserve current model when unsafe
+Phase 6–7: quality assurance (separate from capability recommendation)
+  • Evidence Index v2 (train split only; pass + fail runs)
+  • Quality floor: mean quality + pass rate vs declared threshold
+  • May abstain → effective recommendation preserves current model
        ↓
-recommended modelId + explanation (capability + quality)
+routingRecommendation + qualityAssurance + effectiveRecommendation
        ↓
 recommendedTier = compatibility metadata on chosen model (not the decision rule)
 ```

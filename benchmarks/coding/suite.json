@@ -96,6 +96,7 @@
     },
     {
       "id": "code-retry-wrapper",
+      "benchmarkSplit": "holdout",
       "task": "Implement withRetry(fn, attempts) with tests for success after transient failure",
       "taskType": "code_generation",
       "context": { "description": "Async retry helper" },

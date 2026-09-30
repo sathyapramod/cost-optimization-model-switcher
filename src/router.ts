@@ -6,27 +6,42 @@ import {
 } from "./capabilities.js";
 import { routeByCapabilities, type CapabilityRouteResult } from "./capability-router.js";
 import {
+  DEFAULT_QUALITY_CONSTRAINED_POLICY,
   executeQualityConstrainedRouting,
   type QualityConstrainedRoutingResult,
 } from "./quality-constrained-policy.js";
+import { loadDefaultQualityEvidence } from "./quality-evidence.js";
 import type { ProgressiveRoutingResult } from "./progressive-routing.js";
+import {
+  buildQualityAssurance,
+  buildRoutingRecommendation,
+  resolveEffectiveRecommendation,
+  type EffectiveRoutingRecommendation,
+  type QualityAssurance,
+  type RoutingRecommendation,
+} from "./routing-assurance.js";
 import type { TaskAnalysis } from "./task-analyzer.js";
 import type { CapabilityTier, ContextBand, ContextSource } from "./types.js";
 
 export interface RoutingDecision {
+  /** Capability-only recommendation (not a quality guarantee). */
+  routingRecommendation: RoutingRecommendation;
+  /** Empirical quality layer (may abstain). */
+  qualityAssurance: QualityAssurance;
+  /** Merged gate hint — quality abstain preserves current model. */
+  effectiveRecommendation: EffectiveRoutingRecommendation;
   /** Lowest-cost capable tier among models that meet requirements (null if none). */
   capableTier: CapabilityTier | null;
-  /** Tier from v1 pickDowngrade / pickUpgrade heuristics (confidence comparison only). */
   legacyTier: CapabilityTier;
-  /** Tier metadata of the recommended model (not the decision itself). */
+  /** @deprecated Prefer `effectiveRecommendation.tier` — kept for gate compatibility. */
   recommendedTier: CapabilityTier;
+  /** @deprecated Prefer `effectiveRecommendation.modelId`. */
   recommendedModelId: string | null;
   currentMeetsTask: boolean;
   explanation: string;
   capabilityRoute?: CapabilityRouteResult;
-  /** Phase 6: cost minimization subject to quality ≥ required threshold. */
+  /** @deprecated Use `qualityAssurance.result`. */
   qualityConstrained?: QualityConstrainedRoutingResult;
-  /** Set by experimental progressive routing when a caller attaches it (not used by the gate). */
   progressiveRouting?: ProgressiveRoutingResult;
 }
 
@@ -41,9 +56,6 @@ export interface RouteInput {
   effectiveInputTokens?: number;
 }
 
-/**
- * Capability-based router (Phase 2): task + context requirements → model profiles → optimize cost/speed.
- */
 export function routeForTask(input: RouteInput): RoutingDecision {
   const effectiveInputTokens =
     input.effectiveInputTokens ?? input.taskAnalysis.estimatedInputTokens;
@@ -59,35 +71,50 @@ export function routeForTask(input: RouteInput): RoutingDecision {
     effectiveInputTokens,
   });
 
-  const quality = executeQualityConstrainedRouting({
+  const routingRecommendation = buildRoutingRecommendation(cap, input.resolved.tier);
+
+  const evidenceIndex = loadDefaultQualityEvidence();
+  const qualityResult = executeQualityConstrainedRouting({
     resolved: input.resolved,
     taskAnalysis: input.taskAnalysis,
     capabilityResult: cap,
     switchDirection: input.switchDirection,
     effectiveInputTokens,
+    evidence: evidenceIndex,
   });
 
-  let recommendedModelId = cap.recommendedModelId;
-  let recommendedTier = cap.recommendedTier;
-  if (quality.preserveCurrentModel) {
-    recommendedModelId = null;
-    recommendedTier = input.resolved.tier;
-  } else if (quality.selectedModelId) {
-    recommendedModelId = quality.selectedModelId;
-    recommendedTier = quality.selectedTier ?? cap.recommendedTier;
-  }
+  const qualityAssurance = buildQualityAssurance(
+    qualityResult,
+    evidenceIndex,
+    DEFAULT_QUALITY_CONSTRAINED_POLICY.minEvidenceSamples,
+    input.resolved.provider,
+  );
 
-  const explanation = `${cap.explanation} ${quality.explanation}`;
+  const effectiveRecommendation = resolveEffectiveRecommendation(
+    routingRecommendation,
+    qualityAssurance,
+    input.resolved.tier,
+    input.resolved.modelId,
+  );
+
+  const explanation = [
+    routingRecommendation.explanation,
+    qualityAssurance.result.explanation,
+    `Effective: ${effectiveRecommendation.routingConfidenceNote}`,
+  ].join(" ");
 
   return {
+    routingRecommendation,
+    qualityAssurance,
+    effectiveRecommendation,
     capableTier: cap.capableTier,
     legacyTier: cap.legacyTier,
-    recommendedTier,
-    recommendedModelId,
+    recommendedTier: effectiveRecommendation.tier,
+    recommendedModelId: effectiveRecommendation.modelId,
     currentMeetsTask: cap.currentMeetsTask,
     explanation,
     capabilityRoute: cap,
-    qualityConstrained: quality,
+    qualityConstrained: qualityResult,
   };
 }
 

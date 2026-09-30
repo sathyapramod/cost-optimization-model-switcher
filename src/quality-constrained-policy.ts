@@ -20,11 +20,13 @@ const TIER_RANK: Record<CapabilityTier, number> = {
 };
 
 export interface QualityConstrainedPolicyConfig {
-  /** Minimum expected quality (0–1) for models in the switch candidate set. */
+  /** Minimum mean quality (0–1) across all evaluation runs. */
   defaultRequiredQuality: number;
   /** Raised floor for high-stakes success specifications. */
   highStakesRequiredQuality: number;
   minEvidenceSamples: number;
+  /** Minimum pass rate across evaluation runs (pass and fail included in index v2). */
+  minPassRate: number;
   /** When true, models without fixture-backed evidence are not selected. */
   requireEvidenceForSelection: boolean;
 }
@@ -33,6 +35,7 @@ export const DEFAULT_QUALITY_CONSTRAINED_POLICY: QualityConstrainedPolicyConfig 
   defaultRequiredQuality: 0.85,
   highStakesRequiredQuality: 0.9,
   minEvidenceSamples: 1,
+  minPassRate: 0.75,
   requireEvidenceForSelection: true,
 };
 
@@ -49,7 +52,20 @@ export interface QualityConstrainedCandidate {
   estimatedTurnCostUsd: number;
   status: QualityCandidateStatus;
   rejectReason?: string;
-  evidence?: Pick<QualityEvidenceRecord, "sampleCount" | "fixtureTaskIds" | "expectedQuality">;
+  evidence?: Pick<
+    QualityEvidenceRecord,
+    | "sampleCount"
+    | "fixtureTaskIds"
+    | "meanQuality"
+    | "passRate"
+    | "passCount"
+    | "failCount"
+    | "evidenceConfidence"
+    | "evaluatorId"
+    | "evaluatorVersion"
+    | "modelVersion"
+    | "evidenceSource"
+  >;
 }
 
 export interface QualityConstrainedRoutingResult {
@@ -142,7 +158,10 @@ function formatEvidenceSummary(
   if (!forSpec.length) {
     return `No offline task-quality fixture evidence for spec "${specId}".`;
   }
-  const models = forSpec.map((r) => `${r.modelId} (n=${r.sampleCount}, q≈${r.expectedQuality.toFixed(2)})`);
+  const models = forSpec.map(
+    (r) =>
+      `${r.modelId} (n=${r.sampleCount}, pass=${(r.passRate * 100).toFixed(0)}%, q̄=${r.meanQuality.toFixed(2)})`,
+  );
   return (
     `Fixture-backed evidence for "${specId}"` +
     (requiredQuality != null ? ` vs required≥${requiredQuality.toFixed(2)}` : "") +
@@ -285,20 +304,45 @@ export function executeQualityConstrainedRouting(
       continue;
     }
 
-    if (record.expectedQuality < requiredQuality) {
-      const reason = `expected quality ${record.expectedQuality.toFixed(2)} < required ${requiredQuality.toFixed(2)}`;
+    const evidenceSnapshot = {
+      meanQuality: record.meanQuality,
+      passRate: record.passRate,
+      passCount: record.passCount,
+      failCount: record.failCount,
+      sampleCount: record.sampleCount,
+      fixtureTaskIds: record.fixtureTaskIds,
+      evidenceConfidence: record.evidenceConfidence,
+      evaluatorId: record.evaluatorId,
+      evaluatorVersion: record.evaluatorVersion,
+      modelVersion: record.modelVersion,
+      evidenceSource: record.evidenceSource,
+    };
+
+    if (record.passRate < policy.minPassRate) {
+      const reason = `pass rate ${(record.passRate * 100).toFixed(0)}% < required ${(policy.minPassRate * 100).toFixed(0)}%`;
       candidates.push({
         modelId: model.modelId,
         tier: model.tier,
-        expectedQuality: record.expectedQuality,
+        expectedQuality: record.meanQuality,
         estimatedTurnCostUsd: turnCost,
         status: "rejected_quality",
         rejectReason: reason,
-        evidence: {
-          expectedQuality: record.expectedQuality,
-          sampleCount: record.sampleCount,
-          fixtureTaskIds: record.fixtureTaskIds,
-        },
+        evidence: evidenceSnapshot,
+      });
+      rejectedModels.push({ modelId: model.modelId, reason });
+      continue;
+    }
+
+    if (record.meanQuality < requiredQuality) {
+      const reason = `mean quality ${record.meanQuality.toFixed(2)} < required ${requiredQuality.toFixed(2)}`;
+      candidates.push({
+        modelId: model.modelId,
+        tier: model.tier,
+        expectedQuality: record.meanQuality,
+        estimatedTurnCostUsd: turnCost,
+        status: "rejected_quality",
+        rejectReason: reason,
+        evidence: evidenceSnapshot,
       });
       rejectedModels.push({ modelId: model.modelId, reason });
       continue;
@@ -307,14 +351,10 @@ export function executeQualityConstrainedRouting(
     candidates.push({
       modelId: model.modelId,
       tier: model.tier,
-      expectedQuality: record.expectedQuality,
+      expectedQuality: record.meanQuality,
       estimatedTurnCostUsd: turnCost,
       status: "eligible",
-      evidence: {
-        expectedQuality: record.expectedQuality,
-        sampleCount: record.sampleCount,
-        fixtureTaskIds: record.fixtureTaskIds,
-      },
+      evidence: evidenceSnapshot,
     });
   }
 

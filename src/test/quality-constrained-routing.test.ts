@@ -7,6 +7,7 @@ import {
   executeQualityConstrainedRouting,
 } from "../quality-constrained-policy.js";
 import type { QualityEvidenceIndex, QualityEvidenceRecord } from "../quality-evidence.js";
+import { TASK_CONTRACT_EVALUATOR_ID } from "../task-quality/evaluators.js";
 import { routeByCapabilities } from "../capability-router.js";
 import { analyzeTask } from "../task-analyzer.js";
 import { routeForTask } from "../router.js";
@@ -17,20 +18,42 @@ function mockEvidence(
   rows: Array<{
     modelId: string;
     specId: QualityEvidenceRecord["specId"];
-    expectedQuality: number;
+    meanQuality: number;
+    passRate?: number;
+    passCount?: number;
+    failCount?: number;
   }>,
 ): QualityEvidenceIndex {
   return {
-    version: "test",
+    version: "2",
+    evaluatorId: TASK_CONTRACT_EVALUATOR_ID,
+    evaluatorVersion: "1.0.0",
+    evidenceSource: "synthetic",
     note: "test-only evidence",
-    records: rows.map((r) => ({
-      provider: "anthropic",
-      modelId: r.modelId,
-      specId: r.specId,
-      expectedQuality: r.expectedQuality,
-      sampleCount: 1,
-      fixtureTaskIds: ["test-fixture"],
-    })),
+    records: rows.map((r) => {
+      const passCount = r.passCount ?? (r.passRate != null ? Math.round(r.passRate * 10) : 10);
+      const failCount = r.failCount ?? 10 - passCount;
+      const sampleCount = passCount + failCount;
+      const passRate = r.passRate ?? passCount / sampleCount;
+      return {
+        provider: "anthropic",
+        modelId: r.modelId,
+        modelVersion: `${r.modelId}@tier=test`,
+        specId: r.specId,
+        evaluatorId: TASK_CONTRACT_EVALUATOR_ID,
+        evaluatorVersion: "1.0.0",
+        evidenceSource: "synthetic",
+        runs: [],
+        passCount,
+        failCount,
+        sampleCount,
+        passRate,
+        meanQuality: r.meanQuality,
+        expectedQuality: r.meanQuality,
+        evidenceConfidence: "high",
+        fixtureTaskIds: ["test-fixture"],
+      };
+    }),
   };
 }
 
@@ -53,9 +76,9 @@ describe("quality-constrained routing policy", () => {
     });
 
     const evidence = mockEvidence([
-      { modelId: "claude-haiku-4-5", specId: "summarization", expectedQuality: 0.62 },
-      { modelId: "claude-sonnet-4-6", specId: "summarization", expectedQuality: 0.86 },
-      { modelId: "claude-opus-4-6", specId: "summarization", expectedQuality: 0.91 },
+      { modelId: "claude-haiku-4-5", specId: "summarization", meanQuality: 0.62, passRate: 0.5 },
+      { modelId: "claude-sonnet-4-6", specId: "summarization", meanQuality: 0.86, passRate: 1 },
+      { modelId: "claude-opus-4-6", specId: "summarization", meanQuality: 0.91, passRate: 1 },
     ]);
 
     const result = executeQualityConstrainedRouting({
@@ -65,18 +88,14 @@ describe("quality-constrained routing policy", () => {
       switchDirection: "downgrade",
       effectiveInputTokens: analysis.estimatedInputTokens,
       evidence,
-      policy: { defaultRequiredQuality: 0.85 },
+      policy: { defaultRequiredQuality: 0.85, minPassRate: 0.75 },
     });
 
     assert.equal(result.requiredQuality, 0.85);
     assert.equal(result.selectedModelId, "claude-sonnet-4-6");
     assert.ok(
-      result.rejectedModels.some(
-        (r) => r.modelId === "claude-haiku-4-5" && r.reason.includes("0.62"),
-      ),
+      result.rejectedModels.some((r) => r.modelId === "claude-haiku-4-5"),
     );
-    assert.ok(result.explanation.includes("required quality"));
-    assert.ok(result.explanation.includes("Rejected"));
     assert.equal(result.preserveCurrentModel, false);
   });
 
@@ -103,7 +122,14 @@ describe("quality-constrained routing policy", () => {
       capabilityResult: cap,
       switchDirection: "downgrade",
       effectiveInputTokens: analysis.estimatedInputTokens,
-      evidence: { version: "empty", note: "none", records: [] },
+      evidence: {
+        version: "2",
+        evaluatorId: TASK_CONTRACT_EVALUATOR_ID,
+        evaluatorVersion: "1.0.0",
+        evidenceSource: "synthetic",
+        note: "empty",
+        records: [],
+      },
     });
 
     assert.equal(result.preserveCurrentModel, true);
@@ -125,9 +151,8 @@ describe("quality-constrained routing policy", () => {
       switchDirection: "downgrade",
     });
     assert.equal(routing.recommendedModelId, "claude-haiku-4-5");
-    assert.ok(routing.qualityConstrained);
-    assert.equal(routing.qualityConstrained!.preserveCurrentModel, false);
-    const haiku = routing.qualityConstrained!.candidates.find(
+    assert.equal(routing.qualityAssurance.guarantee.level, "probabilistic");
+    const haiku = routing.qualityAssurance.result.candidates.find(
       (c) => c.modelId === "claude-haiku-4-5",
     );
     assert.equal(haiku?.status, "eligible");

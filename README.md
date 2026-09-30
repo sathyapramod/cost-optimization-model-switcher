@@ -1,6 +1,6 @@
 # Cost Optimization & Model Switcher
 
-Explainable **model gate** for AI coding agents: classify the task, size the context, recommend the lowest **capability tier** that fits (premium / balanced / fast), and optionally estimate turn cost—before Opus ingests a 2MB log or Haiku tackles a migration.
+Explainable **model gate** for AI coding agents: classify the task, size the context, and suggest a **capability-tier** switch (premium / balanced / fast) with **separate quality assurance** (probabilistic, fixture-backed — not a correctness guarantee). Estimates turn cost before Opus ingests a 2MB log or Haiku tackles a migration.
 
 **Claude Code** · **Cursor** · **OpenAI** (skill, CLI, HTTP proxy, or npm library)
 

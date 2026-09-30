@@ -34,6 +34,7 @@ export interface DomainBenchmarkSuiteFile {
 
 export interface DomainBenchmarkCaseRaw {
   id: string;
+  benchmarkSplit?: "train" | "holdout";
   task: string;
   context?: TaskCaseContext;
   taskType?: string;
@@ -72,6 +73,7 @@ function normalizeCase(raw: DomainBenchmarkCaseRaw, domain: BenchmarkDomain): Ta
   const probes = raw.context?.probes;
   return {
     id: raw.id,
+    benchmarkSplit: raw.benchmarkSplit ?? "train",
     domain,
     taskType: raw.taskType ?? domain,
     category: raw.category ?? defaultCategory(domain),

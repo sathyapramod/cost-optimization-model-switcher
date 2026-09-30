@@ -115,6 +115,8 @@ export function evaluateTaskCase(taskCase: TaskCase): EvaluationResult[] {
 
 export interface RunTaskQualityOptions {
   fixturesPath?: string;
+  /** When set, only cases with this benchmark split are evaluated. */
+  benchmarkSplit?: import("./types.js").BenchmarkSplit;
 }
 
 function aggregateByModelDomain(
@@ -175,14 +177,28 @@ function aggregateByModelDomain(
   }));
 }
 
+export function runHeldOutBenchmarkEvaluation(
+  options?: Omit<RunTaskQualityOptions, "benchmarkSplit">,
+): TaskQualityReport {
+  const report = runTaskQualityEvaluation({ ...options, benchmarkSplit: "holdout" });
+  return {
+    ...report,
+    note: `Held-out benchmark (excluded from routing evidence index). ${report.note}`,
+  };
+}
+
 export function runTaskQualityEvaluation(
   options?: RunTaskQualityOptions,
 ): TaskQualityReport {
   const suite = loadTaskQualityFixtures(options?.fixturesPath);
-  const cases = suite.cases.map((taskCase) => ({
+  const filtered = options?.benchmarkSplit
+    ? suite.cases.filter((c) => (c.benchmarkSplit ?? "train") === options.benchmarkSplit)
+    : suite.cases;
+  const cases = filtered.map((taskCase) => ({
     caseId: taskCase.id,
     category: taskCase.category,
     domain: taskCase.domain,
+    benchmarkSplit: taskCase.benchmarkSplit ?? "train",
     results: evaluateTaskCase(taskCase),
   }));
 

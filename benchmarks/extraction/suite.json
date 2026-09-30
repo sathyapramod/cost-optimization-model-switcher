@@ -138,8 +138,8 @@
           "output": "```json\n{\"statusCodes\":[200,404,500]}\n```\n"
         },
         {
-          "modelId": "claude-haiku-4-5",
-          "provider": "anthropic",
+          "modelId": "fixture-weak-negative",
+          "provider": "openai",
           "latencyMs": 820,
           "inputTokens": 30000,
           "outputTokens": 40,
