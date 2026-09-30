@@ -9,6 +9,7 @@ import {
   executeQualityConstrainedRouting,
   type QualityConstrainedRoutingResult,
 } from "./quality-constrained-policy.js";
+import type { ProgressiveRoutingResult } from "./progressive-routing.js";
 import type { TaskAnalysis } from "./task-analyzer.js";
 import type { CapabilityTier, ContextBand, ContextSource } from "./types.js";
 
@@ -17,7 +18,7 @@ export interface RoutingDecision {
   capableTier: CapabilityTier | null;
   /** Tier from v1 pickDowngrade / pickUpgrade heuristics (confidence comparison only). */
   legacyTier: CapabilityTier;
-  /** Tier metadata of the recommended model (not the routing decision itself). */
+  /** Tier metadata of the recommended model (not the decision itself). */
   recommendedTier: CapabilityTier;
   recommendedModelId: string | null;
   currentMeetsTask: boolean;
@@ -25,6 +26,8 @@ export interface RoutingDecision {
   capabilityRoute?: CapabilityRouteResult;
   /** Phase 6: cost minimization subject to quality ≥ required threshold. */
   qualityConstrained?: QualityConstrainedRoutingResult;
+  /** Set by experimental progressive routing when a caller attaches it (not used by the gate). */
+  progressiveRouting?: ProgressiveRoutingResult;
 }
 
 export interface RouteInput {

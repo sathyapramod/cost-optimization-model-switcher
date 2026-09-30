@@ -17,6 +17,20 @@ export {
   deriveRequiredQuality,
   executeQualityConstrainedRouting,
 } from "./quality-constrained-policy.js";
+export {
+  DEFAULT_PROGRESSIVE_ROUTING_CONFIG,
+  EXPERIMENTAL_PROGRESSIVE_ROUTING_ENABLED,
+  executeExperimentalProgressiveRouting,
+} from "./progressive-routing.js";
+export type {
+  ProgressiveRoutingAttempt,
+  ProgressiveRoutingConfig,
+  ProgressiveRoutingEvaluation,
+  ProgressiveRoutingInput,
+  ProgressiveRoutingResult,
+  ProgressiveRoutingStopReason,
+  ProgressiveModelExecutor,
+} from "./progressive-routing.js";
 export type {
   QualityConstrainedPolicyConfig,
   QualityConstrainedRoutingInput,
