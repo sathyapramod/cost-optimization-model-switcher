@@ -67,7 +67,12 @@ console.log(md);
 console.log(`\nWrote ${jsonPath}`);
 console.log(`Wrote ${mdPath}`);
 
-if (!dryRun && report.summary.evaluated === 0) {
-  console.error("\nNo cases evaluated — check --split, --domain, or --case filters.");
+if (!dryRun && report.summary.caseCount === 0) {
+  console.error("\nNo cases matched — check --split, --domain, or --case filters.");
+  process.exit(1);
+}
+
+if (!dryRun && report.summary.evaluated === 0 && report.summary.errored > 0) {
+  console.error(`\nAll ${report.summary.errored} case(s) errored (e.g. quota/auth) — see table above.`);
   process.exit(1);
 }

@@ -3,7 +3,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Provider } from "../types.js";
 import { buildLiveUserPrompt, loadCaseInputText } from "./case-input.js";
-import { completeLiveModel, type LiveModelTarget } from "./live-client.js";
+import {
+  completeLiveModel,
+  type ChatCompletionResult,
+  type LiveModelTarget,
+} from "./live-client.js";
 import { loadTaskQualityFixtures } from "./fixtures.js";
 import { evaluateTaskCandidate } from "./runner.js";
 import type { BenchmarkDomain, BenchmarkSplit, EvaluationResult, TaskCase } from "./types.js";
@@ -57,6 +61,11 @@ export interface RunLiveBenchmarkOptions {
   fixturesPath?: string;
   outPath?: string;
   append?: boolean;
+  /** Injection point for tests; defaults to the real `completeLiveModel` API call. */
+  completeFn?: (
+    target: LiveModelTarget,
+    prompt: string,
+  ) => Promise<ChatCompletionResult>;
 }
 
 export function loadLiveRuns(path = DEFAULT_LIVE_RUNS_PATH): LiveRunsFile {
@@ -110,6 +119,8 @@ export interface LiveBenchmarkReport {
     promptChars: number;
     hasInputAsset: boolean;
     skipped?: string;
+    /** API/network error for this case only — other cases still ran. */
+    error?: string;
     result?: LiveBenchmarkRun;
   }[];
   summary: {
@@ -117,6 +128,7 @@ export interface LiveBenchmarkReport {
     evaluated: number;
     passed: number;
     failed: number;
+    errored: number;
     evidenceEligiblePassed: number;
   };
   outPath?: string;
@@ -138,6 +150,7 @@ export async function runLiveBenchmarkEvaluation(
       evaluated: 0,
       passed: 0,
       failed: 0,
+      errored: 0,
       evidenceEligiblePassed: 0,
     },
   };
@@ -161,45 +174,53 @@ export async function runLiveBenchmarkEvaluation(
       continue;
     }
 
-    const completion = await completeLiveModel(options.target, prompt);
-    const candidate = {
-      modelId: options.target.modelId,
-      provider: options.target.provider,
-      output: completion.output,
-      latencyMs: completion.latencyMs,
-      inputTokens: completion.inputTokens,
-      outputTokens: completion.outputTokens,
-    };
-    const evaluation = evaluateTaskCandidate(taskCase, candidate);
-    const evidenceEligible = split === "train";
-    const run: LiveBenchmarkRun = {
-      taskId: taskCase.id,
-      domain: taskCase.domain,
-      benchmarkSplit: split,
-      provider: options.target.provider,
-      modelId: options.target.modelId,
-      completedAt: new Date().toISOString(),
-      latencyMs: completion.latencyMs,
-      inputTokens: completion.inputTokens,
-      outputTokens: completion.outputTokens,
-      output: completion.output,
-      evaluation: {
-        passed: evaluation.passed,
-        qualityScore: evaluation.qualityScore,
-        specId: evaluation.specId,
-        errors: evaluation.errors,
-        evaluator: evaluation.evaluator,
-      },
-      evidenceEligible,
-    };
-    entry.result = run;
-    newRuns.push(run);
-    report.summary.evaluated++;
-    if (evaluation.passed) {
-      report.summary.passed++;
-      if (evidenceEligible) report.summary.evidenceEligiblePassed++;
-    } else {
-      report.summary.failed++;
+    try {
+      const complete = options.completeFn ?? completeLiveModel;
+      const completion = await complete(options.target, prompt);
+      const candidate = {
+        modelId: options.target.modelId,
+        provider: options.target.provider,
+        output: completion.output,
+        latencyMs: completion.latencyMs,
+        inputTokens: completion.inputTokens,
+        outputTokens: completion.outputTokens,
+      };
+      const evaluation = evaluateTaskCandidate(taskCase, candidate);
+      const evidenceEligible = split === "train";
+      const run: LiveBenchmarkRun = {
+        taskId: taskCase.id,
+        domain: taskCase.domain,
+        benchmarkSplit: split,
+        provider: options.target.provider,
+        modelId: options.target.modelId,
+        completedAt: new Date().toISOString(),
+        latencyMs: completion.latencyMs,
+        inputTokens: completion.inputTokens,
+        outputTokens: completion.outputTokens,
+        output: completion.output,
+        evaluation: {
+          passed: evaluation.passed,
+          qualityScore: evaluation.qualityScore,
+          specId: evaluation.specId,
+          errors: evaluation.errors,
+          evaluator: evaluation.evaluator,
+        },
+        evidenceEligible,
+      };
+      entry.result = run;
+      newRuns.push(run);
+      report.summary.evaluated++;
+      if (evaluation.passed) {
+        report.summary.passed++;
+        if (evidenceEligible) report.summary.evidenceEligiblePassed++;
+      } else {
+        report.summary.failed++;
+      }
+    } catch (err) {
+      // One case failing (quota, timeout, malformed response) must not abort the batch —
+      // record it and keep evaluating the rest.
+      entry.error = err instanceof Error ? err.message : String(err);
+      report.summary.errored++;
     }
     report.cases.push(entry);
   }
@@ -231,17 +252,20 @@ export function formatLiveBenchmarkMarkdown(report: LiveBenchmarkReport): string
     `Model: ${report.target.provider}:${report.target.modelId}`,
     `Split filter: ${report.benchmarkSplit ?? "holdout"}${report.dryRun ? " (dry run)" : ""}`,
     "",
-    `Cases: ${report.summary.caseCount} | Evaluated: ${report.summary.evaluated} | Pass: ${report.summary.passed} | Fail: ${report.summary.failed}`,
+    `Cases: ${report.summary.caseCount} | Evaluated: ${report.summary.evaluated} | Pass: ${report.summary.passed} | Fail: ${report.summary.failed} | Errored: ${report.summary.errored}`,
     "",
-    "| Case | Domain | Split | Input asset | Pass | Quality |",
-    "|------|--------|-------|-------------|------|---------|",
+    "| Case | Domain | Split | Input asset | Pass | Quality | Error |",
+    "|------|--------|-------|-------------|------|---------|-------|",
   ];
   for (const c of report.cases) {
     const pass = c.result?.evaluation.passed;
     const q = c.result?.evaluation.qualityScore;
     lines.push(
-      `| ${c.caseId} | ${c.domain ?? ""} | ${c.benchmarkSplit} | ${c.hasInputAsset ? "yes" : "no"} | ${pass == null ? "—" : pass ? "yes" : "no"} | ${q ?? "—"} |`,
+      `| ${c.caseId} | ${c.domain ?? ""} | ${c.benchmarkSplit} | ${c.hasInputAsset ? "yes" : "no"} | ${pass == null ? "—" : pass ? "yes" : "no"} | ${q ?? "—"} | ${(c.error ?? "").replace(/\|/g, "/").slice(0, 200)} |`,
     );
+  }
+  if (report.summary.errored > 0) {
+    lines.push("", `⚠️ ${report.summary.errored} case(s) errored (see table) — batch continued.`);
   }
   if (report.outPath) {
     lines.push("", `Appended runs to \`${report.outPath}\`. Train-split runs merge into routing evidence when present.`);
