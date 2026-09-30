@@ -31,11 +31,33 @@ export {
 } from "./task-analyzer.js";
 export type {
   TaskAnalysis,
+  TaskAnalysisCore,
   TaskAnalyzerInput,
   TaskCategory,
   TaskFeatureVector,
   TaskIntent,
 } from "./task-analyzer.js";
+export {
+  buildTaskContract,
+  defaultSuccessCriteria,
+  deriveObjective,
+  deriveRequirements,
+  deriveUnderstandingConfidence,
+  extractConstraints,
+  inferRiskLevel,
+  isAnalyticalTask,
+  resolveContractTaskType,
+} from "./task-contract.js";
+export type {
+  RiskLevel,
+  SuccessCriterion,
+  SuccessCriterionKind,
+  TaskContract,
+  TaskContractInput,
+  TaskRequirements,
+  TaskType,
+  TaskUnderstandingConfidence,
+} from "./task-contract.js";
 export {
   assertAdversarialSuite,
   formatAdversarialMarkdown,

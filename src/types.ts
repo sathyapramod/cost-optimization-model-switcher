@@ -117,6 +117,8 @@ export interface GateDecision {
   taskClass: TaskClass;
   /** V2 task analyzer output (#11); same heuristics as `scores` + routing hints. */
   taskAnalysis?: import("./task-analyzer.js").TaskAnalysis;
+  /** Phase 1 structured task contract (mirror of `taskAnalysis.contract`). */
+  taskContract?: import("./task-contract.js").TaskContract;
   /** V2 capability profile for the current model (#12). */
   capabilityProfile?: import("./capabilities.js").ModelCapabilityProfile;
   /** V2 capability router output (#13). */

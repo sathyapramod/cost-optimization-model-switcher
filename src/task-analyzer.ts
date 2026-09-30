@@ -1,5 +1,13 @@
 import { inferPrimarySource, scoreIngestComplexity, taskClassFromDifficulty } from "./classify-core.js";
 import { estimateTotalTokens, resolveContextBand } from "./estimate.js";
+import { buildTaskContract, type TaskContract } from "./task-contract.js";
+import type {
+  TaskAnalysisCore,
+  TaskAnalysisFlags,
+  TaskCategory,
+  TaskFeatureVector,
+  TaskIntent,
+} from "./task-types.js";
 import type {
   CapabilityTier,
   ContextBand,
@@ -8,57 +16,17 @@ import type {
   TaskClass,
 } from "./types.js";
 
-/** Aligns with `benchmarks/fixtures.json` categories for evaluation (#15–#16). */
-export type TaskCategory =
-  | "summarization"
-  | "pr_review"
-  | "crud_implementation"
-  | "architecture"
-  | "debugging"
-  | "security"
-  | "refactor"
-  | "other";
+export type {
+  TaskAnalysisCore,
+  TaskAnalysisFlags,
+  TaskCategory,
+  TaskFeatureVector,
+  TaskIntent,
+} from "./task-types.js";
 
-export type TaskIntent =
-  | "summarize"
-  | "extract"
-  | "format"
-  | "review"
-  | "implement"
-  | "debug"
-  | "refactor"
-  | "architect"
-  | "security"
-  | "other";
-
-/** 0–5 capability needs used by the V2 router (#13); independent of current model tier. */
-export interface TaskFeatureVector {
-  reasoningDepth: number;
-  codeChange: number;
-  securityDepth: number;
-  bulkTextProcessing: number;
-  contextDependence: number;
-}
-
-export interface TaskAnalysisFlags {
-  deepSignals: boolean;
-  mixedIntent: boolean;
-  wantsThoroughReview: boolean;
-}
-
-export interface TaskAnalysis {
-  intents: TaskIntent[];
-  category: TaskCategory;
-  taskClass: TaskClass;
-  taskDifficulty: number;
-  ingestComplexity: number;
-  contextBand: ContextBand;
-  estimatedInputTokens: number;
-  primarySource: ContextSource;
-  features: TaskFeatureVector;
-  flags: TaskAnalysisFlags;
-  /** Lowest tier likely to succeed; routing engine (#13) may override with policy (#19). */
-  minimumCapability: CapabilityTier;
+export interface TaskAnalysis extends TaskAnalysisCore {
+  /** Phase 1 task contract (requirements + success criteria); does not drive routing yet. */
+  contract: TaskContract;
 }
 
 export interface TaskAnalyzerInput {
@@ -246,7 +214,8 @@ export function analyzeTask(input: TaskAnalyzerInput): TaskAnalysis {
     features,
   };
 
-  return {
+  const minimumCapability = minimumCapabilityForAnalysis(partial);
+  const analysisCore = {
     intents,
     category,
     taskClass,
@@ -257,6 +226,16 @@ export function analyzeTask(input: TaskAnalyzerInput): TaskAnalysis {
     primarySource,
     features,
     flags,
-    minimumCapability: minimumCapabilityForAnalysis(partial),
+    minimumCapability,
   };
+
+  const contract = buildTaskContract({
+    userMessage: input.userMessage,
+    probes,
+    contextBand,
+    primarySource,
+    analysis: analysisCore,
+  });
+
+  return { ...analysisCore, contract };
 }

@@ -198,6 +198,7 @@ export function evaluateGate(input: GateInput): GateDecision {
     contextBand,
     taskClass,
     taskAnalysis,
+    taskContract: taskAnalysis.contract,
     capabilityProfile,
     scores: { taskDifficulty, ingestComplexity },
     contextOptimization,
