@@ -7,7 +7,7 @@
 **Module:** `src/router.ts`  
 **Entry:** `routeForTask()` — used by `evaluateGate()` when suggesting a switch.
 
-## Flow (Phase 2)
+## Flow (Phase 2 + Phase 6)
 
 ```text
 analyzeTask() → task contract requirements
@@ -18,10 +18,18 @@ model-profiles.json → per-model capability vector (curated, not ground truth)
        ↓
 filterCapableModels() → mandatory axis match
        ↓
-policy (cost/speed) + switch direction → recommended modelId
+Phase 6: quality-constrained policy (minimize cost, quality ≥ required)
+  • success spec id + required quality threshold
+  • fixture-backed expected quality per model (task-quality benchmarks)
+  • reject below floor / missing evidence; pick cheapest eligible
+  • preserve current model when unsafe
+       ↓
+recommended modelId + explanation (capability + quality)
        ↓
 recommendedTier = compatibility metadata on chosen model (not the decision rule)
 ```
+
+See `src/quality-constrained-policy.ts` and `src/quality-evidence.ts`. Required quality defaults to **0.85** ( **0.90** for architecture/security specs). Evidence is aggregated from `benchmarks/task-quality/fixtures.json` — not `success-rates.json`.
 
 Legacy `pickDowngradeTier` / `pickUpgradeTier` tiers are exposed as `legacyTier` for confidence comparison only.
 

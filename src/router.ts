@@ -5,6 +5,10 @@ import {
   type CapabilityCatalog,
 } from "./capabilities.js";
 import { routeByCapabilities, type CapabilityRouteResult } from "./capability-router.js";
+import {
+  executeQualityConstrainedRouting,
+  type QualityConstrainedRoutingResult,
+} from "./quality-constrained-policy.js";
 import type { TaskAnalysis } from "./task-analyzer.js";
 import type { CapabilityTier, ContextBand, ContextSource } from "./types.js";
 
@@ -19,6 +23,8 @@ export interface RoutingDecision {
   currentMeetsTask: boolean;
   explanation: string;
   capabilityRoute?: CapabilityRouteResult;
+  /** Phase 6: cost minimization subject to quality ≥ required threshold. */
+  qualityConstrained?: QualityConstrainedRoutingResult;
 }
 
 export interface RouteInput {
@@ -50,14 +56,35 @@ export function routeForTask(input: RouteInput): RoutingDecision {
     effectiveInputTokens,
   });
 
+  const quality = executeQualityConstrainedRouting({
+    resolved: input.resolved,
+    taskAnalysis: input.taskAnalysis,
+    capabilityResult: cap,
+    switchDirection: input.switchDirection,
+    effectiveInputTokens,
+  });
+
+  let recommendedModelId = cap.recommendedModelId;
+  let recommendedTier = cap.recommendedTier;
+  if (quality.preserveCurrentModel) {
+    recommendedModelId = null;
+    recommendedTier = input.resolved.tier;
+  } else if (quality.selectedModelId) {
+    recommendedModelId = quality.selectedModelId;
+    recommendedTier = quality.selectedTier ?? cap.recommendedTier;
+  }
+
+  const explanation = `${cap.explanation} ${quality.explanation}`;
+
   return {
     capableTier: cap.capableTier,
     legacyTier: cap.legacyTier,
-    recommendedTier: cap.recommendedTier,
-    recommendedModelId: cap.recommendedModelId,
+    recommendedTier,
+    recommendedModelId,
     currentMeetsTask: cap.currentMeetsTask,
-    explanation: cap.explanation,
+    explanation,
     capabilityRoute: cap,
+    qualityConstrained: quality,
   };
 }
 

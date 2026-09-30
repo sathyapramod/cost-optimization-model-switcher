@@ -45,6 +45,9 @@ export interface CapabilityRouteInput {
 
 export interface CapabilityRouteResult {
   requirements: RoutingRequirements;
+  /** All roster models that meet mandatory capability/context requirements. */
+  capableModels: CatalogModelProfile[];
+  /** Capable models that also satisfy switch-direction constraints. */
   eligibleModels: CatalogModelProfile[];
   recommended: CatalogModelProfile | null;
   recommendedTier: CapabilityTier;
@@ -184,6 +187,7 @@ export function routeByCapabilities(input: CapabilityRouteInput): CapabilityRout
 
   return {
     requirements,
+    capableModels: capable,
     eligibleModels: eligible,
     recommended,
     recommendedTier,

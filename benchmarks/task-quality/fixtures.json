@@ -31,6 +31,14 @@
           "inputTokens": 48000,
           "outputTokens": 350,
           "output": "## Errors\n- Java OOM in worker-3 (exit code 137)\n- Test suite aborted after heap exhaustion\n"
+        },
+        {
+          "modelId": "gpt-4o-mini",
+          "provider": "openai",
+          "latencyMs": 880,
+          "inputTokens": 48000,
+          "outputTokens": 340,
+          "output": "## Errors\n- Java OOM in worker-3 (exit code 137)\n- Test suite aborted after heap exhaustion\n"
         }
       ]
     },
@@ -216,6 +224,40 @@
           "inputTokens": 3000,
           "outputTokens": 1100,
           "output": "Phase 1 runs dual session + JWT validation. Trade-off: higher latency vs safer cutover. Failure mode: stale JWT after revocation — use short TTL + denylist. Rollback keeps session cookies for 48h.\n"
+        }
+      ]
+    },
+    {
+      "id": "security-api-audit",
+      "category": "security",
+      "userMessage": "Run a security audit on this API surface and explain exploit paths",
+      "probes": [
+        { "source": "github_pr", "additions": 800, "deletions": 200, "changedFiles": 12 }
+      ],
+      "evaluationCriteria": [
+        {
+          "id": "threat_coverage",
+          "description": "Covers auth bypass and injection paths",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["auth bypass", "injection", "IDOR"] }
+        },
+        {
+          "id": "actionable_remediation",
+          "description": "Actionable remediation steps",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["remediat", "fix:", "mitigation", "rotate keys"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-opus-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2800,
+          "inputTokens": 12000,
+          "outputTokens": 900,
+          "output": "Threat coverage: broken object-level auth on `/user/{id}` enables IDOR; SQL injection in legacy search param. Exploit path: swap user id then chain to admin token. Remediation: enforce object ownership checks, parameterize queries, rotate API keys after fix.\n"
         }
       ]
     },

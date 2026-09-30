@@ -12,6 +12,23 @@ export {
 } from "./capabilities.js";
 export { loadRoutingCapabilities, routeForTask } from "./router.js";
 export type { RouteInput, RoutingDecision } from "./router.js";
+export {
+  DEFAULT_QUALITY_CONSTRAINED_POLICY,
+  deriveRequiredQuality,
+  executeQualityConstrainedRouting,
+} from "./quality-constrained-policy.js";
+export type {
+  QualityConstrainedPolicyConfig,
+  QualityConstrainedRoutingInput,
+  QualityConstrainedRoutingResult,
+  QualityConstrainedCandidate,
+} from "./quality-constrained-policy.js";
+export {
+  buildQualityEvidenceFromFixtures,
+  loadDefaultQualityEvidence,
+  lookupQualityEvidence,
+} from "./quality-evidence.js";
+export type { QualityEvidenceIndex, QualityEvidenceRecord } from "./quality-evidence.js";
 export { routeByCapabilities } from "./capability-router.js";
 export type { CapabilityRouteInput, CapabilityRouteResult, RoutingPolicy } from "./capability-router.js";
 export {

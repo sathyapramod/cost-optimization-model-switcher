@@ -289,7 +289,12 @@ export function assessRoutingUncertainty(
   let suggestSwitch = true;
   let noOpReason: string | undefined;
 
-  if (!input.routing.recommendedModelId || recommended === current) {
+  if (input.routing.qualityConstrained?.preserveCurrentModel) {
+    suggestSwitch = false;
+    noOpReason =
+      input.routing.qualityConstrained.noOpReason ??
+      "quality-constrained routing could not select a model with sufficient evidence";
+  } else if (!input.routing.recommendedModelId || recommended === current) {
     suggestSwitch = false;
     noOpReason = input.routing.recommendedModelId
       ? "already on recommended model"
