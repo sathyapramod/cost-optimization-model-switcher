@@ -134,6 +134,21 @@ export {
 } from "./evaluation.js";
 export type { EvaluationReport, RunEvaluationOptions } from "./evaluation.js";
 export {
+  formatTaskQualityMarkdown,
+  loadTaskQualityFixtures,
+  runTaskQualityEvaluation,
+  evaluateTaskCandidate,
+  evaluateTaskCase,
+  evaluateOutputAgainstCriteria,
+  TASK_QUALITY_FRAMEWORK_VERSION,
+} from "./task-quality/index.js";
+export type {
+  EvaluationResult,
+  TaskCase,
+  TaskQualityReport,
+  CriterionEvaluationResult,
+} from "./task-quality/index.js";
+export {
   assertBenchmarkExpectations,
   benchmarkFixture,
   formatBenchmarkMarkdown,

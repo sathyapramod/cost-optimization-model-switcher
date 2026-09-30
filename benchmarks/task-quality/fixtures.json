@@ -1,0 +1,284 @@
+{
+  "version": "1",
+  "note": "Offline task-quality fixtures with recorded outputs. These scores are evidence for criterion design — not assumed success-rates.json placeholders.",
+  "cases": [
+    {
+      "id": "summarization-ci-log",
+      "category": "summarization",
+      "userMessage": "Summarize this CI log and list errors only",
+      "probes": [{ "source": "log_file", "bytes": 500000 }],
+      "evaluationCriteria": [
+        {
+          "id": "preserve_key_facts",
+          "description": "Preserve key facts",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["OOM", "exit code 137"] }
+        },
+        {
+          "id": "no_unsupported_claims",
+          "description": "No unsupported claims",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustNotInclude": ["kubernetes cluster upgraded"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 920,
+          "inputTokens": 48000,
+          "outputTokens": 350,
+          "output": "## Errors\n- Java OOM in worker-3 (exit code 137)\n- Test suite aborted after heap exhaustion\n"
+        }
+      ]
+    },
+    {
+      "id": "extraction-jira-p0",
+      "category": "summarization",
+      "userMessage": "Extract all P0 Jira tickets from this sprint export",
+      "probes": [{ "source": "jira", "issueCount": 25 }],
+      "evaluationCriteria": [
+        {
+          "id": "preserve_key_facts",
+          "description": "Lists P0 issue keys",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["PROJ-101", "PROJ-204"] }
+        },
+        {
+          "id": "cover_important_sections",
+          "description": "Includes priority field",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["P0"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 600,
+          "inputTokens": 12000,
+          "outputTokens": 180,
+          "output": "P0 tickets:\n- PROJ-101 Payment timeout\n- PROJ-204 Auth token leak\n"
+        }
+      ]
+    },
+    {
+      "id": "code-generation-plugin",
+      "category": "crud_implementation",
+      "userMessage": "Implement a hello endpoint with unit tests",
+      "evaluationCriteria": [
+        {
+          "id": "compiles",
+          "description": "Includes implementation code",
+          "type": "deterministic",
+          "required": true,
+          "spec": { "check": "has_code_fence" }
+        },
+        {
+          "id": "tests_pass",
+          "description": "Includes test code",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["describe\\(", "it\\(", "test\\("] }
+        },
+        {
+          "id": "requirements_satisfied",
+          "description": "Hello route present",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["hello", "200"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2100,
+          "inputTokens": 4000,
+          "outputTokens": 900,
+          "output": "```ts\nexport function hello() { return { status: 200, body: 'hello' }; }\n```\n```ts\ndescribe('hello', () => { it('returns 200', () => expect(hello().status).toBe(200)); });\n```\n"
+        }
+      ]
+    },
+    {
+      "id": "code-review-sql",
+      "category": "pr_review",
+      "userMessage": "Review PR diff and list security bugs",
+      "probes": [{ "source": "github_pr", "additions": 200, "deletions": 10, "changedFiles": 3 }],
+      "evaluationCriteria": [
+        {
+          "id": "identify_known_defects",
+          "description": "Flags SQL injection",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["sql injection", "parameteriz"] }
+        },
+        {
+          "id": "avoid_false_positives",
+          "description": "Does not invent unrelated CVE",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustNotInclude": ["CVE-2099-9999"] }
+        },
+        {
+          "id": "classify_severity",
+          "description": "Uses severity label",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["high", "critical"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1500,
+          "inputTokens": 8000,
+          "outputTokens": 420,
+          "output": "**High**: User input concatenated into SQL in `UserRepo.lookup` — use parameterized queries to prevent SQL injection.\n"
+        }
+      ]
+    },
+    {
+      "id": "debugging-race",
+      "category": "debugging",
+      "userMessage": "Fix the race condition in the cache module",
+      "evaluationCriteria": [
+        {
+          "id": "identify_root_cause",
+          "description": "Names race on shared map",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["race", "concurrent"] }
+        },
+        {
+          "id": "provide_evidence",
+          "description": "Cites log or stack evidence",
+          "type": "rubric",
+          "required": true,
+          "spec": { "rubricKeywords": ["log", "stack", "interleaved", "goroutine", "thread"] }
+        },
+        {
+          "id": "fix_addresses_root_cause",
+          "description": "Proposes mutex or serialization",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["mutex", "lock", "serializ"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 1800,
+          "inputTokens": 6000,
+          "outputTokens": 500,
+          "output": "Root cause: concurrent goroutines write the shared map without synchronization (race). Log lines and stack trace show interleaved PUT on multiple threads. Fix: guard cache with a mutex.\n"
+        }
+      ]
+    },
+    {
+      "id": "architecture-auth-migration",
+      "category": "architecture",
+      "userMessage": "Design auth migration from legacy sessions to JWT",
+      "evaluationCriteria": [
+        {
+          "id": "satisfy_requirements",
+          "description": "Addresses session + JWT coexistence",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["JWT", "session"] }
+        },
+        {
+          "id": "identify_tradeoffs",
+          "description": "States tradeoffs",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["tradeoff", "trade-off"] }
+        },
+        {
+          "id": "address_failure_modes",
+          "description": "Mentions rollback or token revocation failure",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["rollback", "revocation", "failure mode"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-opus-4-6",
+          "provider": "anthropic",
+          "latencyMs": 3200,
+          "inputTokens": 3000,
+          "outputTokens": 1100,
+          "output": "Phase 1 runs dual session + JWT validation. Trade-off: higher latency vs safer cutover. Failure mode: stale JWT after revocation — use short TTL + denylist. Rollback keeps session cookies for 48h.\n"
+        }
+      ]
+    },
+    {
+      "id": "analytical-10x-workload",
+      "category": "other",
+      "criteriaSource": "fixture_only",
+      "userMessage": "Evaluate whether system X can handle 10x workload.",
+      "evaluationCriteria": [
+        {
+          "id": "identifies_bottleneck_a",
+          "description": "Identifies bottleneck A (database write path)",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["database", "write"] }
+        },
+        {
+          "id": "considers_constraint_b",
+          "description": "Considers constraint B (network egress cap)",
+          "type": "structured",
+          "required": true,
+          "spec": { "mustInclude": ["egress", "network"] }
+        },
+        {
+          "id": "performs_calculation_c",
+          "description": "Performs calculation C (10x throughput vs limit)",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAll": ["10", "x", "req/s|requests"] }
+        },
+        {
+          "id": "discusses_failure_mode_d",
+          "description": "Discusses failure mode D (cascade under saturation)",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["cascade", "saturation", "queue depth"] }
+        },
+        {
+          "id": "conclusion_with_uncertainty",
+          "description": "Conclusion with uncertainty",
+          "type": "structured",
+          "required": true,
+          "spec": { "patternsAny": ["uncertain", "cannot handle", "can handle", "risk"] }
+        }
+      ],
+      "candidates": [
+        {
+          "modelId": "claude-sonnet-4-6",
+          "provider": "anthropic",
+          "latencyMs": 2400,
+          "inputTokens": 2500,
+          "outputTokens": 850,
+          "output": "Assume steady 1k req/s today. At 10x (10k req/s), the database write path saturates first. Network egress cap of 2 Gbps is constraint B — calculations show ~2.4 Gbps needed. Under saturation, queue depth grows and cascade failures are likely. Conclusion: system X cannot handle 10x without sharding writes; uncertainty ±15% on traffic mix.\n"
+        },
+        {
+          "modelId": "claude-haiku-4-5",
+          "provider": "anthropic",
+          "latencyMs": 900,
+          "inputTokens": 2500,
+          "outputTokens": 120,
+          "output": "System X is fine and will easily handle 10x.\n"
+        }
+      ]
+    }
+  ]
+}

@@ -10,15 +10,19 @@
 |-------|-------|------|---------|
 | **Regression** | #15 | `benchmarks/fixtures.json` | Cost/success + `expectByTier` gate contract |
 | **Adversarial** | #16 | `benchmarks/adversarial.json` | False-positive / false-negative routing traps |
+| **Task quality (Phase 5)** | — | `benchmarks/task-quality/fixtures.json` | Criterion-level pass/fail on recorded outputs |
 
-Both run through `runEvaluation()` in `src/evaluation.ts`.
+Router regression runs through `runEvaluation()` in `src/evaluation.ts`.
+
+**Important:** `benchmarks/success-rates.json` assumed rates are **not** empirical quality evidence. Use `runTaskQualityEvaluation()` for criterion-based quality measurement.
 
 ## Commands
 
 ```bash
-npm run evaluate          # full report + exit 1 on failure
-npm run benchmark         # regression only (fixtures)
-npm test                  # unit tests include evaluation + adversarial
+npm run evaluate              # router regression + adversarial
+npm run evaluate:task-quality # task contract criterion evaluation (offline outputs)
+npm run benchmark             # regression only (fixtures)
+npm test                      # unit tests include all suites
 ```
 
 Outputs:
@@ -26,6 +30,17 @@ Outputs:
 - `benchmarks/results/evaluation-latest.json`
 - `benchmarks/results/evaluation-latest.md`
 - `benchmarks/results/latest.json` (benchmark-only script)
+- `benchmarks/results/task-quality-latest.json` / `.md` (Phase 5)
+
+## Task quality (Phase 5)
+
+```typescript
+import { runTaskQualityEvaluation, formatTaskQualityMarkdown } from "cost-optimization-model-switcher";
+
+const report = runTaskQualityEvaluation();
+```
+
+Each result includes `qualityScore`, `passed`, `criterionResults`, `latencyMs`, token counts, and `estimatedCostUsd`. See [SUCCESS_CRITERIA.md](./SUCCESS_CRITERIA.md).
 
 ## Adversarial kinds
 
