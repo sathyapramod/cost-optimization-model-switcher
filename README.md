@@ -1,12 +1,13 @@
 # Cost Optimization & Model Switcher
 
-Explainable **model gate** for AI coding agents: classify the task, size the context, and suggest a **capability-tier** switch (premium / balanced / fast) with **separate quality assurance** (probabilistic, fixture-backed — not a correctness guarantee). Estimates turn cost before Opus ingests a 2MB log or Haiku tackles a migration.
+Explainable **model gate** for AI coding agents: classify the task, size the context, and suggest a **capability-tier** switch (premium / balanced / fast). **Routing** (cheapest capable tier) and **quality assurance** (offline evaluator evidence) are separate — the gate may abstain from a downgrade when evidence does not support it. Estimates turn cost before Opus ingests a 2MB log or Haiku tackles a migration.
 
 **Claude Code** · **Cursor** · **OpenAI** (skill, CLI, HTTP proxy, or npm library)
 
 | | |
 |--|--|
 | **Deep docs & concepts** | [docs/README.md](docs/README.md) |
+| **Routing vs quality assurance** | [docs/ROUTING_ASSURANCE.md](docs/ROUTING_ASSURANCE.md) |
 | **Agent behavior (install this)** | [SKILL.md](SKILL.md) |
 
 > Hosts do not auto-change the model yet. The skill **stops and asks**; you switch in `/model` or the picker, then reply `switched`.
@@ -22,6 +23,8 @@ Explainable **model gate** for AI coding agents: classify the task, size the con
 - [CLI reference](#cli-reference)
 - [Integrate in your app](#integrate-in-your-app)
 - [How routing works](#how-routing-works)
+- [Evaluation & benchmarks](#evaluation--benchmarks)
+- [Limitations](#limitations)
 - [FAQ](#faq)
 
 ---
@@ -33,6 +36,7 @@ Explainable **model gate** for AI coding agents: classify the task, size the con
 | Gate runs inside **Claude Code / Cursor** on every big PR, log, or Jira pull | [Install the skill](#install-the-skill) → [Use in the agent](#use-in-the-agent) | No |
 | **Script or CI** calls the gate before a model turn | [Try the CLI](#try-the-cli-60-seconds) → [CLI reference](#cli-reference) | Yes |
 | **Your product** calls `evaluateGate` or the proxy | [Integrate in your app](#integrate-in-your-app) | Yes |
+| **Measure** task-quality on fixtures or live APIs | [Evaluation & benchmarks](#evaluation--benchmarks) | Yes |
 
 **What ships in this repo**
 
@@ -40,9 +44,11 @@ Explainable **model gate** for AI coding agents: classify the task, size the con
 |----------|------|
 | `SKILL.md` | Instructions the agent follows (symlink into skills) |
 | `npm run gate` / `cost-gate` | CLI; exit `2` = switch recommended |
-| `evaluateGate()` | Same logic in TypeScript |
+| `evaluateGate()` / `routeForTask()` | Gate + full routing decision (recommendation + assurance) |
 | `npm run proxy` | `POST /v1/gate` for HTTP integrators |
 | `catalogs/default.json` | Your model IDs → tiers |
+| `benchmarks/<domain>/suite.json` | Per–task-class quality cases (train + holdout) |
+| `benchmarks/assets/<caseId>.txt` | Source text for live API evaluation prompts |
 
 ---
 
@@ -77,7 +83,15 @@ npm run gate -- --json --model claude-opus-4-6 \
   "action": "suggest_switch",
   "routing": {
     "capableTier": "fast",
-    "recommendedTier": "fast"
+    "recommendedTier": "fast",
+    "routingRecommendation": { "kind": "capability_routing", "recommendedModelId": "claude-haiku-4-5" },
+    "qualityAssurance": {
+      "kind": "quality_assurance",
+      "guarantee": { "level": "probabilistic" },
+      "evidenceStatus": "known",
+      "evidenceSource": "fixture_train"
+    },
+    "effectiveRecommendation": { "basis": "quality_assured" }
   },
   "suggestSwitch": {
     "switch_direction": "downgrade",
@@ -91,7 +105,7 @@ npm run gate -- --json --model claude-opus-4-6 \
 }
 ```
 
-Also inspect `taskAnalysis`, `capabilityProfile`, and `contextOptimization` in the full JSON.
+`recommendedModelId` / `recommendedTier` follow **effective** choice (quality overlay may abstain and preserve the current model). Also inspect `taskAnalysis`, `capabilityProfile`, `routingConfidence`, and `contextOptimization` in the full JSON.
 
 ---
 
@@ -203,7 +217,7 @@ npm run proxy
 **Library**
 
 ```typescript
-import { evaluateGate } from "cost-optimization-model-switcher";
+import { evaluateGate, routeForTask } from "cost-optimization-model-switcher";
 
 const decision = evaluateGate({
   currentModel: "claude-opus-4-6",
@@ -214,6 +228,14 @@ const decision = evaluateGate({
 if (decision.action === "suggest_switch") {
   console.log(decision.suggestSwitch);
 }
+
+// Lower-level: separate routing recommendation vs quality assurance
+const routing = routeForTask({
+  currentModelId: "claude-opus-4-6",
+  userMessage: "Summarize this 2MB CI log",
+  probes: [{ source: "log_file", bytes: 2_000_000 }],
+});
+console.log(routing.routingRecommendation, routing.qualityAssurance);
 ```
 
 **Custom models** — add rows to [catalogs/default.json](catalogs/default.json), then `npm test`. Unknown models skip the gate until catalogued. Guide: [docs/PROVIDERS.md](docs/PROVIDERS.md).
@@ -225,11 +247,19 @@ if (decision.action === "suggest_switch") {
 ## How routing works
 
 ```text
-Prompt + probes (PR stats, bytes, …)
-    → task analysis (difficulty, intents, minimum tier)
-    → capability match (premium / balanced / fast)
-    → confidence check → proceed or suggest_switch
+Prompt + probes
+  → task analysis (difficulty, intents, minimum tier)
+  → capability routing (cheapest eligible tier from profiles)
+  → routing recommendation (cost/capability — not verified quality)
+  → quality assurance (Evidence Index v2 vs quality floor; may abstain)
+  → effective recommendation → gate action + routingConfidence
 ```
+
+| Layer | API field | Meaning |
+|-------|-----------|---------|
+| **Routing recommendation** | `routing.routingRecommendation` | Cheapest capability-eligible model. Disclaimer: not verified task quality. |
+| **Quality assurance** | `routing.qualityAssurance` | Pass/fail evidence, `evidenceStatus`, `evidenceSource`, `evidenceConfidence`, guarantee `none` \| `probabilistic` \| `abstain`. |
+| **Effective (gate)** | `routing.effectiveRecommendation` | What `recommendedModelId` uses: capability-only, quality-assured, or abstain (keep current). |
 
 | Tier | Default Claude | Default OpenAI | Typical use |
 |------|----------------|----------------|-------------|
@@ -237,7 +267,48 @@ Prompt + probes (PR stats, bytes, …)
 | **balanced** | Sonnet | gpt-4o | PR review, nuanced implementation |
 | **fast** | Haiku | gpt-4o-mini | Summarize, extract, triage |
 
-Routing internals (profiles, confidence, benchmarks): [docs/README.md](docs/README.md).
+**Evidence Index v2** aggregates **pass and fail** evaluator runs per model × success spec (training fixtures + optional live runs). `benchmarks/success-rates.json` is **synthetic demo only** — not routing quality truth.
+
+Details: [docs/ROUTING_ASSURANCE.md](docs/ROUTING_ASSURANCE.md) · [docs/ROUTING.md](docs/ROUTING.md) · [docs/README.md](docs/README.md).
+
+---
+
+## Evaluation & benchmarks
+
+Domain suites under `benchmarks/` (summarization, extraction, coding, code-review, debugging, architecture, security, analytical). Each case has success criteria and recorded outputs; **holdout** cases test generalization and are **excluded** from routing evidence.
+
+| Command | Purpose |
+|---------|---------|
+| `npm test` | Unit tests + gate/adversarial regression |
+| `npm run evaluate` | Router regression (`fixtures.json`) + adversarial traps |
+| `npm run benchmark` | Gate fixtures only |
+| `npm run evaluate:task-quality` | Criterion pass/fail on all fixture outputs → `benchmarks/results/task-quality-latest.*` |
+| `npm run evaluate:held-out` | Holdout split only → `held-out-latest.*` |
+| `npm run evaluate:live` | Call Anthropic/OpenAI APIs, same evaluators → `live-runs.json` |
+
+**Offline fixture evaluation** (no API keys):
+
+```bash
+npm run evaluate:task-quality
+npm run evaluate:held-out
+```
+
+**Live empirical runs** (requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`):
+
+```bash
+# Default: holdout slice (does not merge into routing evidence)
+npm run evaluate:live -- --provider anthropic --model claude-haiku-4-5 --split holdout
+
+# Train split: appends to live-runs.json and merges into Evidence Index v2 for routing
+npm run evaluate:live -- --split train --domain summarization,coding
+
+# Preview prompts without API cost
+npm run evaluate:live -- --dry-run --split holdout
+```
+
+Prompt source material: `benchmarks/assets/<caseId>.txt` when present. Compare holdout pass rates to training fixtures; a large gap suggests overfitting recorded outputs.
+
+More: [benchmarks/README.md](benchmarks/README.md) · [docs/EVALUATION.md](docs/EVALUATION.md) · [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 ---
 
@@ -247,6 +318,8 @@ Routing internals (profiles, confidence, benchmarks): [docs/README.md](docs/READ
 |-------|------------|
 | No automatic model switch in IDE | `/model` or picker, then `switched` |
 | Cost numbers are estimates | [docs/COST_MODEL.md](docs/COST_MODEL.md)—not invoices |
+| Task understanding is heuristic | Probes + classifiers are not validated ground truth |
+| Quality assurance is probabilistic | Fixture/live criterion checks — not production correctness |
 | New chat | Re-paste or “continue …” |
 
 ---
@@ -254,13 +327,19 @@ Routing internals (profiles, confidence, benchmarks): [docs/README.md](docs/READ
 ## FAQ
 
 **npm for the skill only?**  
-No—symlink is enough. npm is for CLI, tests, and library.
+No—symlink is enough. npm is for CLI, tests, evaluation scripts, and library.
 
 **Recommended Sonnet but still on Haiku?**  
 The gate advises; you change the session model.
 
 **Same session after `switched`?**  
 Yes—context stays in that chat.
+
+**Why did the gate say `proceed` instead of downgrade?**  
+Quality assurance may **abstain** (insufficient evidence or no model meets pass-rate / mean-quality floors). Check `routing.qualityAssurance` and `effectiveRecommendation.basis`.
+
+**Train vs holdout benchmarks?**  
+**Train** cases feed routing evidence (fixtures + train-split live runs). **Holdout** cases are for generalization checks only.
 
 ---
 

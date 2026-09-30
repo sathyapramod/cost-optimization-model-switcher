@@ -6,8 +6,9 @@ Use this index to find the right guide. The project ships as an **agent skill** 
 
 | I want to… | Read |
 |------------|------|
-| Install and use in Claude Code or Cursor | [README — Install & use](../README.md#install) |
-| Run one command to see a model recommendation | [README — Try it](../README.md#try-it-60-seconds) |
+| Install and use in Claude Code or Cursor | [README — Install the skill](../README.md#install-the-skill) |
+| Run one command to see a model recommendation | [README — Try the CLI](../README.md#try-the-cli-60-seconds) |
+| Run task-quality / held-out / live evaluation | [README — Evaluation & benchmarks](../README.md#evaluation--benchmarks) |
 | Wire OpenAI, Cursor, or a custom catalog | [PROVIDERS.md](./PROVIDERS.md) |
 | Call the gate from my app or proxy | [examples/integration.md](../examples/integration.md) |
 | Understand estimated $ on a turn | [COST_MODEL.md](./COST_MODEL.md) |
@@ -27,7 +28,8 @@ Use this index to find the right guide. The project ships as an **agent skill** 
 | Routing vs quality assurance | [ROUTING_ASSURANCE.md](./ROUTING_ASSURANCE.md) |
 | V2 pipeline and issue map | [V2_ARCHITECTURE.md](./V2_ARCHITECTURE.md) |
 | Fixture suite and `npm run benchmark` | [BENCHMARKS.md](./BENCHMARKS.md) |
-| Full evaluation (benchmark + adversarial) | [EVALUATION.md](./EVALUATION.md) |
+| Full evaluation (benchmark + adversarial + live) | [EVALUATION.md](./EVALUATION.md) |
+| Domain task-quality suites | [benchmarks/README.md](../benchmarks/README.md) |
 
 ## Artifacts in the repo
 
@@ -47,7 +49,9 @@ Before changing heuristics or fixtures:
 
 ```bash
 npm test
-npm run benchmark
+npm run evaluate
+npm run evaluate:task-quality
+npm run evaluate:held-out   # optional: npm run evaluate:live with API keys
 ```
 
 See [V2_ARCHITECTURE.md](./V2_ARCHITECTURE.md) for the baseline contract.
