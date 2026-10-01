@@ -32,6 +32,7 @@
     "proxy": "node dist/proxy.js",
     "validate-skill": "node scripts/validate-skill.mjs",
     "benchmark": "npm run build && node scripts/run-benchmarks.mjs",
+    "benchmark:router": "npm run build && node scripts/run-router-benchmark.mjs",
     "evaluate": "npm run build && node scripts/run-evaluation.mjs",
     "evaluate:task-quality": "npm run build && node scripts/run-task-quality-evaluation.mjs",
     "evaluate:held-out": "npm run build && node scripts/run-held-out-evaluation.mjs",

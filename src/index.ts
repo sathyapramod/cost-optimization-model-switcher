@@ -213,9 +213,13 @@ export {
   benchmarkFixture,
   formatBenchmarkMarkdown,
   gateExpectationMet,
+  inputTokensForCost,
   loadFixtureSuite,
   loadSuccessRates,
   runBenchmarkSuite,
+  turnCostUsd,
+  hasAssumedSuccessRateCategory,
+  assumedSuccessRateForCategory,
 } from "./benchmark.js";
 export type {
   BenchmarkFixture,
@@ -223,6 +227,27 @@ export type {
   FixtureBenchmarkResult,
   TierBenchmarkCell,
 } from "./benchmark.js";
+export {
+  formatRouterBenchmarkMarkdown,
+  loadRouterBenchmarkManifest,
+  loadRouterBenchmarkWorkload,
+  premiumBaselineModelId,
+  runRouterBenchmark,
+  classifyRoutingDecision,
+  evaluateRouterBenchmarkTask,
+  aggregateStrategyQualityMetrics,
+  resolveTaskQualityOutcome,
+} from "./router-benchmark.js";
+export type {
+  RouterBenchmarkReport,
+  RouterBenchmarkTask,
+  RouterBenchmarkTaskResult,
+  RoutingDecisionKind,
+  RunRouterBenchmarkOptions,
+  StrategyQualityMetrics,
+  TaskQualityBasis,
+  TaskQualityOutcome,
+} from "./router-benchmark.js";
 export {
   contextReductionPercent,
   estimateEffectiveInputTokens,

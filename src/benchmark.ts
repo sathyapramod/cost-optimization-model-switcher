@@ -88,7 +88,7 @@ export function loadSuccessRates(
   return JSON.parse(readFileSync(path, "utf8")) as SuccessRateTable;
 }
 
-function inputTokensForCost(decision: GateDecision): number {
+export function inputTokensForCost(decision: GateDecision): number {
   const opt = decision.contextOptimization;
   if (opt.required && decision.taskClass === "straightforward" && opt.effectiveInputTokens > 0) {
     return opt.effectiveInputTokens;
@@ -103,7 +103,7 @@ function routedTier(decision: GateDecision, startingTier: CapabilityTier): Capab
   return startingTier;
 }
 
-function turnCostUsd(
+export function turnCostUsd(
   modelId: string,
   provider: Provider,
   tier: CapabilityTier,
@@ -122,15 +122,31 @@ function turnCostUsd(
   return est.estimated_cost_current_usd;
 }
 
+export function hasAssumedSuccessRateCategory(
+  table: SuccessRateTable,
+  category: string,
+): boolean {
+  return table.rates[category] != null;
+}
+
+/** Tier×category rate from benchmarks/success-rates.json (synthetic demo data). */
+export function assumedSuccessRateForCategory(
+  table: SuccessRateTable,
+  category: string,
+  tier: CapabilityTier,
+): number | null {
+  const row = table.rates[category];
+  const rate = row?.[tier];
+  if (rate == null || rate <= 0) return null;
+  return rate;
+}
+
 function successRateFor(
   table: SuccessRateTable,
   category: string,
   tier: CapabilityTier,
 ): number {
-  const row = table.rates[category];
-  const rate = row?.[tier];
-  if (rate == null || rate <= 0) return 0.5;
-  return rate;
+  return assumedSuccessRateForCategory(table, category, tier) ?? 0.5;
 }
 
 export function gateExpectationMet(

@@ -1,0 +1,13 @@
+{
+  "version": "1",
+  "provider": "anthropic",
+  "startingTier": "premium",
+  "note": "Offline workload for baseline-vs-router cost comparison. Costs use catalogs/pricing.json heuristics — not live API spend. Quality is not empirically scored here.",
+  "include": {
+    "gateFixtures": true,
+    "domainCases": {
+      "split": "train"
+    },
+    "adversarialPremiumCases": true
+  }
+}
