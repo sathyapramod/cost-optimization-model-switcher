@@ -1,127 +1,327 @@
 # Cost Optimization & Model Switcher
 
-Explainable **model gate** for AI coding agents: classify the task, size the context, and suggest a **capability-tier** switch (premium / balanced / fast). **Routing** (cheapest capable tier) and **quality assurance** (offline evaluator evidence) are separate — the gate may abstain from a downgrade when evidence does not support it. Estimates turn cost before Opus ingests a 2MB log or Haiku tackles a migration.
+You do not need your most expensive model for every coding task.
 
-**Claude Code** · **Cursor** · **OpenAI** (skill, CLI, HTTP proxy, or npm library)
+This project is a **local, explainable gate** for AI coding agents. It reads your message and context hints (PR size, log bytes, and similar probes), estimates task complexity and context, and recommends whether to **stay** on the current model, **move to a cheaper tier**, **move to a stronger tier**, or **abstain** when quality evidence is not strong enough to justify a change.
 
-| | |
-|--|--|
-| **Deep docs & concepts** | [docs/README.md](docs/README.md) |
-| **Routing vs quality assurance** | [docs/ROUTING_ASSURANCE.md](docs/ROUTING_ASSURANCE.md) |
-| **Agent behavior (install this)** | [SKILL.md](SKILL.md) |
+- **Local routing** — no provider API call for a normal recommendation  
+- **Cost-aware** — heuristic turn-cost estimates from [catalogs/pricing.json](catalogs/pricing.json)  
+- **Quality-aware** — can refuse a “cheap enough” downgrade when offline evidence does not support it  
+- **No API key** required for `npm run gate`, the library, or the proxy  
 
-> Hosts do not auto-change the model yet. The skill **stops and asks**; you switch in `/model` or the picker, then reply `switched`.
-
----
-
-## Contents
-
-- [Choose your path](#choose-your-path)
-- [Try the CLI](#try-the-cli-60-seconds)
-- [Install the skill](#install-the-skill)
-- [Use in the agent](#use-in-the-agent)
-- [CLI reference](#cli-reference)
-- [Integrate in your app](#integrate-in-your-app)
-- [How routing works](#how-routing-works)
-- [API keys](#api-keys)
-- [Evaluation & benchmarks](#evaluation--benchmarks)
-- [Developer / maintainer evaluation](#developer--maintainer-evaluation)
-- [Limitations](#limitations)
-- [FAQ](#faq)
+Works with **Claude Code**, **Cursor**, **OpenAI-style** setups (CLI, HTTP proxy, or npm package). See [SKILL.md](SKILL.md) for agent behavior.
 
 ---
 
-## Choose your path
+## Why this exists
 
-| Goal | Start here | Needs npm? |
-|------|------------|------------|
-| Gate runs inside **Claude Code / Cursor** on every big PR, log, or Jira pull | [Install the skill](#install-the-skill) → [Use in the agent](#use-in-the-agent) | No |
-| **Script or CI** calls the gate before a model turn | [Try the CLI](#try-the-cli-60-seconds) → [CLI reference](#cli-reference) | Yes |
-| **Your product** calls `evaluateGate` or the proxy | [Integrate in your app](#integrate-in-your-app) | Yes |
-| **Measure** task-quality on fixtures or live APIs (maintainers) | [Developer / maintainer evaluation](#developer--maintainer-evaluation) | Yes |
+Coding agents often default to **premium** models. That is reasonable for hard problems, but expensive for work that is mostly **reading and transforming bulk context**: summarizing CI logs, extracting fields from exports, triaging tickets, or listing PR issues. The opposite mistake is staying on a **fast** model for architecture design, security review, or subtle debugging.
 
-**What ships in this repo**
+This tool sits **before** you ingest a huge diff or log. It asks: given this task and this context size, is your current model tier a good fit—and is there enough **quality evidence** to recommend a cheaper alternative?
 
-| Artifact | Role |
-|----------|------|
-| `SKILL.md` | Instructions the agent follows (symlink into skills) |
-| `npm run gate` / `cost-gate` | CLI; exit `2` = switch recommended |
-| `evaluateGate()` / `routeForTask()` | Gate + full routing decision (recommendation + assurance) |
-| `npm run proxy` | `POST /v1/gate` for HTTP integrators |
-| `catalogs/default.json` | Your model IDs → tiers |
-| `benchmarks/<domain>/suite.json` | Per–task-class quality cases (train + holdout) |
-| `benchmarks/assets/<caseId>.txt` | Source text for live API evaluation prompts |
+```text
+User task
+   ↓
+Analyze task
+   ↓
+Estimate context + complexity
+   ↓
+Evaluate model capability + cost
+   ↓
+Check quality evidence
+   ↓
+Recommend:
+   ↓
+Downgrade / Stay / Upgrade / Abstain
+```
+
+The gate **suggests**; it does not change your IDE model for you.
 
 ---
 
-## Try the CLI (60 seconds)
+## What can it recommend?
 
-**Requires:** Node 20+ only — **no Anthropic or OpenAI API keys** for the cost gate. From repo root:
+| Situation | Recommendation |
+|-----------|----------------|
+| Large context + straightforward task (e.g. summarize log) | **Downgrade** to a cheaper capable tier when evidence allows |
+| Complex task on a weaker tier (e.g. migration on Haiku) | **Upgrade** to a stronger tier |
+| Current tier already fits (or context too small to switch) | **Stay** (`proceed`) |
+| Ambiguous prompt, missing evidence, or quality floor not met | **Abstain** — keep current model; no quality-safe downgrade |
+
+Implementation terms: **`suggest_switch`** (downgrade or upgrade, CLI exit code `2`) vs **`proceed`** (stay, abstain, opt-out, or unknown model). A cheaper tier is recommended only when capability **and** configured quality checks allow it—not because “cheap” is always better.
+
+---
+
+## Model tiers
+
+Models map to three **capability tiers** (see [catalogs/default.json](catalogs/default.json)). Defaults below; your host may use other IDs if they match catalog entries.
+
+| Tier | Anthropic (default) | OpenAI (default) | Typical use |
+|------|---------------------|------------------|-------------|
+| **Premium** | claude-opus-4-6 | o3 | Architecture, hard debugging, deep reasoning |
+| **Balanced** | claude-sonnet-4-6 | gpt-4o | PR review, nuanced implementation |
+| **Fast** | claude-haiku-4-5 | gpt-4o-mini | Summarization, extraction, triage |
+
+Cursor defaults in the same catalog use claude-opus-4-6 / claude-sonnet-4-6 / gpt-4o-mini for premium / balanced / fast. Unknown model IDs **skip switching** until you add them to the catalog.
+
+---
+
+## How it works
+
+At a high level:
+
+```text
+Task analysis
+      ↓
+Context estimation
+      ↓
+Capability routing
+      ↓
+Cost estimation (when a switch is suggested)
+      ↓
+Quality evidence
+      ↓
+Routing confidence
+      ↓
+Recommendation + decision trace
+```
+
+| Step | What it does |
+|------|----------------|
+| **Task analysis** | Infers task type, difficulty, and minimum capability from your message |
+| **Context estimation** | Uses probes (bytes, PR stats, etc.) for token bands and scoped-ingest hints |
+| **Capability routing** | Picks the lowest-cost tier whose profile fits the task |
+| **Cost estimation** | Single-turn USD estimate from pricing catalog + heuristic output tokens |
+| **Quality evidence** | Offline evaluator history may **abstain** instead of endorsing a downgrade |
+| **Routing confidence** | Blocks aggressive switches on ambiguous or underspecified prompts |
+| **Recommendation** | `evaluateGate()` → stay, switch, or abstain with a human-readable trace |
+
+Capability routing and quality assurance are **separate layers**; the gate follows the **effective** recommendation after quality rules. Details: [docs/ROUTING_ASSURANCE.md](docs/ROUTING_ASSURANCE.md).
+
+---
+
+## Do I need an API key?
+
+### Normal usage: **No**
+
+The gate runs **entirely on your machine**. It does **not** call Anthropic or OpenAI to produce a routing decision.
+
+You can run it with **no** `ANTHROPIC_API_KEY` and **no** `OPENAI_API_KEY`:
+
+- `npm run gate` / `cost-gate`
+- `evaluateGate()` from the npm package
+- `npm run proxy`
+- `npm test`, `npm run benchmark`, `npm run evaluate`, `npm run benchmark:router`
+
+### Live evaluation: **Yes** (optional, for maintainers)
+
+Only **`npm run evaluate:live`** (and similar maintainer flows) call a real provider API. You need the key for the provider you pass on the command line—not both keys unless you run both providers.
+
+| Provider | Environment variable |
+|----------|----------------------|
+| Anthropic | `ANTHROPIC_API_KEY` |
+| OpenAI | `OPENAI_API_KEY` |
+
+Live evaluation is **optional**. It is not part of ordinary gate usage. See [src/test/api-key-separation.test.ts](src/test/api-key-separation.test.ts) for regression coverage.
+
+---
+
+## Installation and normal usage
+
+**Node 20+** for CLI and library. **Git only** if you install the agent skill via symlink (no npm required for the skill alone).
 
 ```bash
 git clone https://github.com/sathyapramod/cost-optimization-model-switcher.git
 cd cost-optimization-model-switcher
-npm install && npm run build
-npm run gate -- --json --model claude-opus-4-6 \
+npm install
+npm run build
+```
+
+Analyze a task (example: Opus + large log + summarize):
+
+```bash
+npm run gate -- --model claude-opus-4-6 \
   --probe log_file:2000000 \
   "Summarize this CI log"
 ```
 
-**Downgrade example** (Opus + ~2MB log + summarize → Haiku):
+Machine-readable output and decision trace:
 
 ```bash
 npm run gate -- --json --model claude-opus-4-6 \
   --probe log_file:2000000 \
   "Summarize this CI log"
 ```
+
+Other useful probes: `github_pr:1200,400,18`, `jira:40`, `database_dump:1500000`, `paste:8000`. Run `npm run help` for formats.
 
 | Exit code | Meaning |
 |-----------|---------|
-| `0` | Stay on current tier |
-| `2` | Switch recommended (`suggestSwitch` in JSON) |
-| `1` | Error (bad args or unknown model—add it to the catalog) |
-
-**What good output looks like** (fields trimmed):
-
-```json
-{
-  "action": "suggest_switch",
-  "routing": {
-    "capableTier": "fast",
-    "recommendedTier": "fast",
-    "routingRecommendation": { "kind": "capability_routing", "recommendedModelId": "claude-haiku-4-5" },
-    "qualityAssurance": {
-      "kind": "quality_assurance",
-      "guarantee": { "level": "probabilistic" },
-      "evidenceStatus": "known",
-      "evidenceSource": "fixture_train"
-    },
-    "effectiveRecommendation": { "basis": "quality_assured" }
-  },
-  "suggestSwitch": {
-    "switch_direction": "downgrade",
-    "recommended_model_id": "claude-haiku-4-5",
-    "rationale": "straightforward task over ~500k input tokens; …",
-    "scoped_ingest_plan": "Do not read the full file first: run grep/tail …",
-    "estimated_cost_current_usd": 8.1,
-    "estimated_cost_recommended_usd": 0.54,
-    "savings_percent": 93.3
-  }
-}
-```
-
-`recommendedModelId` / `recommendedTier` follow **effective** choice (quality overlay may abstain and preserve the current model). Also inspect `taskAnalysis`, `capabilityProfile`, `routingConfidence`, and `contextOptimization` in the full JSON.
+| `0` | Proceed — stay, abstain, or no switch |
+| `2` | Switch recommended (`suggest_switch`) |
+| `1` | Error (e.g. invalid arguments) |
 
 ---
 
-## Install the skill
+## What the output means
 
-**Requires:** Git only (no npm).
+Human mode prints a **MODEL ROUTING DECISION** block (from `formatDecisionTraceText`), then optional pricing audit lines. With `--json`, you get the full `GateDecision` plus `decisionTrace` and `pricingCatalogAudit`.
+
+**Trace sections (human output):**
+
+| Section | Meaning |
+|---------|---------|
+| **Current model** | Resolved tier and catalog ID for `--model` |
+| **Task** | Inferred category and task class (straightforward vs complex) |
+| **Context** | Estimated tokens, context band, primary probe source |
+| **Required capabilities** | Inferred needs (e.g. long-context, summarization) |
+| **Quality evidence** | Disposition: `sufficient`, `insufficient`, or `unknown`; quality floor line when applicable |
+| **Decision** | e.g. `DOWNGRADE → …`, `KEEP CURRENT MODEL`, `ABSTAIN` |
+| **Reason** | On abstain, why evidence blocked a safe cheaper switch |
+| **Estimated cost** | Present when `suggest_switch` includes cost fields |
+| **Why** | Bullet list derived from gate fields (deterministic, not LLM-generated) |
+
+**Important JSON fields:**
+
+| Field | Meaning |
+|-------|---------|
+| `action` | `proceed` or `suggest_switch` |
+| `suggestSwitch.switch_direction` | `downgrade` or `upgrade` |
+| `suggestSwitch.recommended_model_id` | Catalog target model |
+| `suggestSwitch.estimated_cost_*_usd` | Heuristic single-turn costs—not invoices |
+| `suggestSwitch.savings_percent` | Relative savings vs current model on that estimate |
+| `routing.routingConfidence` | Confidence state; may block switch |
+| `routing.qualityAssurance.guarantee.level` | `none`, `probabilistic`, or `abstain` |
+| `decisionTrace` | Same story as human trace, structured for tools |
+
+Cost numbers depend on probes, task class, and [catalogs/pricing.json](catalogs/pricing.json); treat them as **estimates**.
+
+---
+
+## Real-world examples
+
+These match behaviors covered by gate fixtures and tests—not performance guarantees.
+
+### Example A — Downgrade
+
+**Situation:** Premium model, large log, clearly straightforward summarization, quality evidence supports a fast-tier switch.
 
 ```bash
-git clone https://github.com/sathyapramod/cost-optimization-model-switcher.git
-cd cost-optimization-model-switcher
+npm run gate -- --json --model claude-opus-4-6 \
+  --probe log_file:2000000 \
+  "Summarize this CI log and list errors only"
 ```
+
+**Typical outcome:** `action: "suggest_switch"`, `switch_direction: "downgrade"`, recommended fast-tier ID (e.g. claude-haiku-4-5), cost and savings fields populated, `decisionTrace.label: "DOWNGRADE"` when quality disposition is sufficient.
+
+### Example B — Upgrade
+
+**Situation:** Fast tier, complex migration / architecture-style task.
+
+```bash
+npm run gate -- --json --model claude-haiku-4-5 \
+  --probe database_dump:500000 \
+  "Design auth migration from this dump"
+```
+
+**Typical outcome:** `suggest_switch` with `switch_direction: "upgrade"` toward premium (e.g. claude-opus-4-6).
+
+### Example C — Abstain / stay
+
+**Underspecified prompt (abstain on downgrade path):**
+
+```bash
+npm run gate -- --model claude-opus-4-6 \
+  --probe log_file:2000000 \
+  "Analyze this."
+```
+
+**Typical outcome:** `proceed`, routing confidence insufficient, quality may abstain; trace label **ABSTAIN**; no downgrade recommendation.
+
+**Stay on premium (complex task):** architecture/migration prompts with large dumps often **`proceed`** with complex task class—no downgrade even with large context.
+
+**Unknown model:** IDs not in the catalog → **`proceed`**, reason includes `unknown model`; switching skipped.
+
+---
+
+## Evidence and quality
+
+The router does **not** always pick the cheapest capable model. Flow:
+
+```text
+Candidate cheaper model
+        ↓
+Quality evidence
+        ↓
+ ┌──────┴──────┐
+ ↓             ↓
+Enough       Insufficient
+evidence     evidence
+ ↓             ↓
+Recommend     Abstain
+ (switch)     (stay)
+```
+
+| Layer | Role |
+|-------|------|
+| **Capability routing** | “Which tier fits the task?” (profiles + cost policy) |
+| **Quality evidence** | “Do we have offline pass-rate / quality data for this spec and model?” |
+| **Final recommendation** | Quality can **veto** a downgrade; effective choice in `routing.effectiveRecommendation` |
+
+**Data types (do not mix them up):**
+
+| Data | What it is |
+|------|------------|
+| **Fixture evaluation** | Recorded outputs in `benchmarks/<domain>/` scored by criterion evaluators—used for evidence index (train split) |
+| **Synthetic rates** | [benchmarks/success-rates.json](benchmarks/success-rates.json)—placeholder tier×category rates for **cost-per-success math only**, not empirical quality truth |
+| **Live evaluation** | Optional API runs → `benchmarks/results/live-runs.json` (gitignored locally)—empirical outputs scored offline |
+| **Holdout** | Generalization slice; **not** merged into routing evidence |
+
+Train vs holdout: [docs/EVALUATION.md](docs/EVALUATION.md).
+
+---
+
+## Benchmark results
+
+Committed repository **does not ship** generated benchmark numbers (`benchmarks/results/` is gitignored). To produce a report locally:
+
+```bash
+npm run benchmark:router
+```
+
+Writes `benchmarks/results/router-benchmark.json` and `.md` on your machine.
+
+The report compares:
+
+- **Strategy A — Premium baseline:** always premium tier on the workload  
+- **Strategy B — Router:** production `evaluateGate` from premium start  
+
+It includes **estimated** total cost, cost per task, cost per successful task (using fixture + synthetic quality weights where noted), quality pass rate (mixed evidence), **routing decision counts** (downgrade / upgrade / stay / abstain), and an explicit evidence label that costs are fixture-based and quality is **not** live API measurement.
+
+**Do not treat these figures as provider bills or production savings.** They characterize the bundled offline workload only.
+
+Other offline checks:
+
+```bash
+npm test                 # unit + adversarial regression
+npm run evaluate         # fixtures + adversarial traps
+npm run benchmark        # gate fixtures only
+```
+
+---
+
+## Integration
+
+| Path | How |
+|------|-----|
+| **Claude Code** | Symlink repo → `~/.claude/skills/cost-optimization-model-switcher`; use skill in session ([SKILL.md](SKILL.md)) |
+| **Cursor** | Symlink → `~/.cursor/skills/cost-optimization-model-switcher` (or `.cursor/skills/` in repo) |
+| **HTTP** | `npm run proxy` → `POST /v1/gate` ([examples/integration.md](examples/integration.md)) |
+| **npm / library** | `import { evaluateGate, gateDecisionWithTrace } from "cost-optimization-model-switcher"` |
+
+After a recommendation, **you** change the model in `/model` or the host picker, then continue (e.g. reply `switched` per skill). Hosts do not auto-switch today.
+
+Custom models: [catalogs/default.json](catalogs/default.json), [docs/PROVIDERS.md](docs/PROVIDERS.md). Tool schema: [schemas/suggest_model_switch.json](schemas/suggest_model_switch.json).
 
 ### Claude Code
 
@@ -129,7 +329,7 @@ cd cost-optimization-model-switcher
 ln -sfn "$(pwd)" ~/.claude/skills/cost-optimization-model-switcher
 ```
 
-Open a **new session** (restart Claude Code). Confirm: `ls ~/.claude/skills/cost-optimization-model-switcher/SKILL.md`
+Restart the app (new session). Verify: `SKILL.md` exists under that path.
 
 ### Cursor
 
@@ -138,249 +338,122 @@ mkdir -p ~/.cursor/skills
 ln -sfn "$(pwd)" ~/.cursor/skills/cost-optimization-model-switcher
 ```
 
-Team repo (optional):
-
-```bash
-mkdir -p .cursor/skills
-ln -sfn "$(pwd)" .cursor/skills/cost-optimization-model-switcher
-```
-
-New **Agent** chat. Invoke: `@cost-optimization-model-switcher` or `/cost-optimization-model-switcher`.
-
-### OpenAI / custom agents
-
-No skill folder—use [CLI](#try-the-cli-60-seconds), [proxy](#integrate-in-your-app), or paste [SKILL.md](SKILL.md) into system instructions.
-
-### After `git pull`
-
-Symlink installs pick up code on pull; restart the host (**new session**) so `SKILL.md` reloads.
-
----
-
-## Use in the agent
-
-1. **Before** full PR/Jira/log/DB ingest, the skill evaluates task + probes (size/metadata).
-2. You confirm a tier change when prompted.
-3. You switch the session model, then say **`switched`**—same chat, no need to re-paste the whole task.
-
-```
-You:     /cost-optimization-model-switcher Implement a Backstage plugin with tests
-Agent:   Recommend Sonnet?
-You:     Yes
-You:     /model  → Sonnet   (or Cursor model picker)
-You:     switched
-Agent:   continues on Sonnet
-```
-
-**Opt out:** `stay on opus` · `no model switch` · `disable cost optimizer`
-
-| | Claude Code | Cursor | OpenAI |
-|--|-------------|--------|--------|
-| Skill location | `~/.claude/skills/cost-optimization-model-switcher/` | `~/.cursor/skills/…` or `.cursor/skills/…` | Use CLI/proxy/library |
-| Change model | `/model` | Model picker | Your UI |
-| Ambiguous slug | Default catalog | `provider: "cursor"` in API | `--provider openai` |
-
-If the gate never runs, invoke the skill explicitly for that turn.
+Invoke `@cost-optimization-model-switcher` or `/cost-optimization-model-switcher` in Agent chat.
 
 ---
 
 ## CLI reference
 
-All commands from repo root after `npm run build`. The **gate** is local and deterministic — it does not call Anthropic or OpenAI.
-
-| Command | Role |
-|---------|------|
-| `npm run gate` | **Primary** — task analysis, routing, cost estimate, model recommendation |
-| `npm run proxy` | HTTP wrapper around the same gate logic |
-
-**Developer / maintainer** (offline or live validation): `npm run evaluate:task-quality`, `npm run evaluate:held-out`, `npm run evaluate:live` — see [Developer / maintainer evaluation](#developer--maintainer-evaluation).
-
-| Scenario | Command |
-|----------|---------|
-| Downgrade | `npm run gate -- --model claude-opus-4-6 --probe log_file:2000000 "Summarize this CI log"` |
-| Upgrade (code) | `npm run gate -- --json --model claude-haiku-4-5 "Implement a Backstage plugin with tests"` |
-| Upgrade (deep + dump) | `npm run gate -- --model claude-haiku-4-5 --probe database_dump:500000 "Design auth migration from this dump"` |
-| OpenAI | `npm run gate -- --model o3 --provider openai --probe log_file:2000000 "Summarize this CI log"` |
-| Cursor | `npm run gate -- --model cursor-small --provider cursor "Implement distributed auth migration"` |
-
-**Probes** (`--probe`):
-
-| Value | Meaning |
-|-------|---------|
-| `github_pr:1200,400,18` | Additions, deletions, files changed |
-| `jira:40` | ~40 issues |
-| `log_file:2000000` | ~2MB log |
-| `database_dump:1500000` | ~1.5MB dump |
-
----
-
-## Integrate in your app
-
-**Proxy**
-
-```bash
-npm run proxy
-# POST http://127.0.0.1:8787/v1/gate
-# POST http://127.0.0.1:8787/v1/suggest_model_switch
-```
-
-`AUTO_SWITCH=1` for local dev. Curl examples: [examples/integration.md](examples/integration.md).
-
-**Library**
-
-```typescript
-import { evaluateGate, routeForTask } from "cost-optimization-model-switcher";
-
-const decision = evaluateGate({
-  currentModel: "claude-opus-4-6",
-  userMessage: "Summarize this 2MB CI log",
-  probes: [{ source: "log_file", bytes: 2_000_000 }],
-});
-
-if (decision.action === "suggest_switch") {
-  console.log(decision.suggestSwitch);
-}
-
-// Lower-level: separate routing recommendation vs quality assurance
-const routing = routeForTask({
-  currentModelId: "claude-opus-4-6",
-  userMessage: "Summarize this 2MB CI log",
-  probes: [{ source: "log_file", bytes: 2_000_000 }],
-});
-console.log(routing.routingRecommendation, routing.qualityAssurance);
-```
-
-**Custom models** — add rows to [catalogs/default.json](catalogs/default.json), then `npm test`. Unknown models skip the gate until catalogued. Guide: [docs/PROVIDERS.md](docs/PROVIDERS.md).
-
-**Tool schema:** [schemas/suggest_model_switch.json](schemas/suggest_model_switch.json)
-
----
-
-## How routing works
-
-```text
-Prompt + probes
-  → task analysis (difficulty, intents, minimum tier)
-  → capability routing (cheapest eligible tier from profiles)
-  → routing recommendation (cost/capability — not verified quality)
-  → quality assurance (Evidence Index v2 vs quality floor; may abstain)
-  → effective recommendation → gate action + routingConfidence
-```
-
-| Layer | API field | Meaning |
-|-------|-----------|---------|
-| **Routing recommendation** | `routing.routingRecommendation` | Cheapest capability-eligible model. Disclaimer: not verified task quality. |
-| **Quality assurance** | `routing.qualityAssurance` | Pass/fail evidence, `evidenceStatus`, `evidenceSource`, `evidenceConfidence`, guarantee `none` \| `probabilistic` \| `abstain`. |
-| **Effective (gate)** | `routing.effectiveRecommendation` | What `recommendedModelId` uses: capability-only, quality-assured, or abstain (keep current). |
-
-| Tier | Default Claude | Default OpenAI | Typical use |
-|------|----------------|----------------|-------------|
-| **premium** | Opus | o3, o1 | Architecture, migration, hard debug |
-| **balanced** | Sonnet | gpt-4o | PR review, nuanced implementation |
-| **fast** | Haiku | gpt-4o-mini | Summarize, extract, triage |
-
-**Evidence Index v2** aggregates **pass and fail** evaluator runs per model × success spec (training fixtures + optional live runs). `benchmarks/success-rates.json` is **synthetic demo only** — not routing quality truth.
-
-Details: [docs/ROUTING_ASSURANCE.md](docs/ROUTING_ASSURANCE.md) · [docs/ROUTING.md](docs/ROUTING.md) · [docs/README.md](docs/README.md).
-
----
-
-## API keys
-
-The **core cost gate** (`npm run gate`, `evaluateGate()`, `npm run proxy`) does **not** require Anthropic or OpenAI API keys. Routing, probes, catalogs, and cost estimates are computed locally.
-
-API keys are **only** required when you explicitly run **live evaluation** against a real provider:
-
-| Live evaluation | Environment variable |
-|-----------------|----------------------|
-| `--provider anthropic` | `ANTHROPIC_API_KEY` |
-| `--provider openai` | `OPENAI_API_KEY` |
-
-You only need the key for the provider you pass to `evaluate:live`. Copy [.env.example](.env.example) if you use a local `.env` for maintainer workflows (optional; the gate never reads it).
-
----
-
-## Evaluation & benchmarks
-
-Domain suites under `benchmarks/` (summarization, extraction, coding, code-review, debugging, architecture, security, analytical). Each case has success criteria and recorded outputs; **holdout** cases test generalization and are **excluded** from routing evidence.
+### User commands
 
 | Command | Purpose |
 |---------|---------|
-| `npm test` | Unit tests + gate/adversarial regression |
-| `npm run evaluate` | Router regression (`fixtures.json`) + adversarial traps |
-| `npm run benchmark` | Gate fixtures only |
+| `npm run gate` | Analyze task; print decision trace (or JSON with `--json`) |
+| `npm run help` | Gate CLI help |
+| `npm run proxy` | HTTP gate on `127.0.0.1:8787` (see proxy source) |
+| `npm run build` | Compile TypeScript (required before gate/proxy from source) |
 
-Offline fixture evaluation (no API keys): `npm run evaluate:task-quality`, `npm run evaluate:held-out`.
+Common flags: `--model`, `--provider`, `--probe` (repeatable), `--json`, `--opt-out`, `--chose-opus`, `--chose-cheap`, `--auto-switch`.
 
-More: [benchmarks/README.md](benchmarks/README.md) · [docs/EVALUATION.md](docs/EVALUATION.md) · [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+### Developer / maintainer commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm test` | Build + unit tests (gate, adversarial, API-key isolation, …) |
+| `npm run evaluate` | Router regression + adversarial suite |
+| `npm run benchmark` | Gate fixture benchmarks |
+| `npm run benchmark:router` | Premium baseline vs router (cost + quality mix) |
+| `npm run evaluate:task-quality` | Criterion evaluation on domain fixtures |
+| `npm run evaluate:held-out` | Holdout split only |
+| `npm run evaluate:live` | Live provider API + same evaluators |
+| `npm run evaluate:live-compare` | Offline baseline vs router from recorded live runs |
+| `npm run validate-skill` | Validate SKILL.md structure |
 
 ---
 
 ## Developer / maintainer evaluation
 
-Validation tooling for routing evidence and benchmark quality — **not** required for normal gate usage.
+Live and holdout tooling exists to **calibrate and sanity-check** routing evidence—not for end users running the gate day to day.
 
-| Command | Purpose |
-|---------|---------|
-| `npm run evaluate:task-quality` | Criterion pass/fail on all fixture outputs → `benchmarks/results/task-quality-latest.*` |
-| `npm run evaluate:held-out` | Holdout split only → `held-out-latest.*` |
-| `npm run evaluate:live` | Call a real provider API, same evaluators → `live-runs.json` |
+- **`evaluate:live`** — Calls a real model, scores output with the same criteria as fixtures, can append to `live-runs.json`. Requires **`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`** for the chosen `--provider`. Train-split runs can merge into routing evidence; holdout does not.  
+- **`evaluate:held-out`** — Measures generalization on holdout cases without feeding routing rules.  
+- **`evaluate:live-compare`** — Reads recorded live runs only (no API); reports paired baseline vs router when enough holdout samples exist; otherwise states insufficient evidence.  
+- **`benchmark:router`** — Offline workload; mixed fixture/synthetic quality; labeled in report JSON.
 
-**Offline:**
+Interpret benchmarks as **regression signals**, not proof of real-world spend or quality unless you have your own live holdout data.
 
-```bash
-npm run evaluate:task-quality
-npm run evaluate:held-out
-```
-
-**Live** (provider key required only for the `--provider` you choose):
-
-```bash
-# Default: holdout slice (does not merge into routing evidence)
-npm run evaluate:live -- --provider anthropic --model claude-haiku-4-5 --split holdout
-
-# Train split: appends to live-runs.json and merges into Evidence Index v2 for routing
-npm run evaluate:live -- --provider anthropic --split train --domain summarization,coding
-
-# Preview prompts without API cost (no key required)
-npm run evaluate:live -- --dry-run --split holdout
-```
-
-Prompt source material: `benchmarks/assets/<caseId>.txt` when present. Compare holdout pass rates to training fixtures; a large gap suggests overfitting recorded outputs.
+Workflow notes: [docs/EVALUATION.md](docs/EVALUATION.md), [benchmarks/README.md](benchmarks/README.md).
 
 ---
 
 ## Limitations
 
-| Issue | What to do |
-|-------|------------|
-| No automatic model switch in IDE | `/model` or picker, then `switched` |
-| Cost numbers are estimates | [docs/COST_MODEL.md](docs/COST_MODEL.md)—not invoices |
-| Task understanding is heuristic | Probes + classifiers are not validated ground truth |
-| Quality assurance is probabilistic | Fixture/live criterion checks — not production correctness |
-| New chat | Re-paste or “continue …” |
+| Topic | Note |
+|-------|------|
+| **Cost** | Estimates from catalog list prices + heuristic output tokens—not invoices |
+| **Pricing freshness** | [catalogs/pricing.json](catalogs/pricing.json) metadata may have no `retrievedAt`; CLI can warn when stale/unknown |
+| **Quality** | Probabilistic / fixture-based; abstain when evidence is weak—not universal correctness |
+| **Task understanding** | Heuristic classifiers; ambiguous prompts trigger abstain or clarification |
+| **Switching** | Recommendations only; IDE must change model manually |
+| **Live eval** | Requires provider credentials; optional |
+| **Public claims** | Do not cite offline router benchmark % as production ROI without live validation |
 
 ---
 
 ## FAQ
 
-**npm for the skill only?**  
-No—symlink is enough. npm is for CLI, tests, evaluation scripts, and library.
+### Does this call Anthropic/OpenAI during normal routing?
 
-**Recommended Sonnet but still on Haiku?**  
-The gate advises; you change the session model.
+**No.** Normal gate, proxy, and library paths are local. Only maintainer commands such as `npm run evaluate:live` call provider APIs.
 
-**Same session after `switched`?**  
-Yes—context stays in that chat.
+### Do I need an API key?
 
-**Why did the gate say `proceed` instead of downgrade?**  
-Quality assurance may **abstain** (insufficient evidence or no model meets pass-rate / mean-quality floors). Check `routing.qualityAssurance` and `effectiveRecommendation.basis`.
+**Not for normal gate usage.** Optional **`ANTHROPIC_API_KEY`** or **`OPENAI_API_KEY`** only when you run live evaluation for the matching provider.
 
-**Train vs holdout benchmarks?**  
-**Train** cases feed routing evidence (fixtures + train-split live runs). **Holdout** cases are for generalization checks only.
+### Does it automatically switch my model?
+
+**No.** The skill/CLI recommends; you switch in Claude Code (`/model`), Cursor (picker), or your host, then continue the session.
+
+### Is the cost exact?
+
+**No.** It is a **heuristic** turn estimate from `catalogs/pricing.json` and inferred token counts. See [docs/COST_MODEL.md](docs/COST_MODEL.md).
+
+### What happens when the router is uncertain?
+
+It **abstains** or **stays**: insufficient task description, missing quality evidence, quality floor not met, or low routing confidence. Check `decisionTrace` or `routing.qualityAssurance`.
+
+### Can I run the benchmark myself?
+
+Yes:
+
+```bash
+npm run benchmark:router
+```
+
+Output is written under `benchmarks/results/` (local; not committed). See [benchmarks/README.md](benchmarks/README.md).
+
+### Do I need npm for the Claude/Cursor skill?
+
+**No** for the skill symlink alone. **Yes** for CLI, tests, and npm package usage.
 
 ---
 
 ## License
 
 MIT — [LICENSE](LICENSE)
+
+---
+
+## Further reading (advanced)
+
+| Topic | Document |
+|-------|----------|
+| Docs index | [docs/README.md](docs/README.md) |
+| Routing vs quality assurance | [docs/ROUTING_ASSURANCE.md](docs/ROUTING_ASSURANCE.md) |
+| Routing internals | [docs/ROUTING.md](docs/ROUTING.md) |
+| Cost model | [docs/COST_MODEL.md](docs/COST_MODEL.md) |
+| Evaluation & holdout | [docs/EVALUATION.md](docs/EVALUATION.md) |
+| Benchmarks layout | [benchmarks/README.md](benchmarks/README.md) |
+| Agent skill (install) | [SKILL.md](SKILL.md) |
+| Catalogs | [catalogs/](catalogs/) |
+| HTTP examples | [examples/integration.md](examples/integration.md) |
