@@ -271,15 +271,28 @@ export {
   scopedRetentionFraction,
 } from "./ingest-scope.js";
 export {
+  assessPricingFreshness,
   buildSwitchCostEstimate,
   estimateOutputTokens,
   estimateTurnCostUsd,
+  formatPricingAuditText,
   formatSavingsLine,
   loadDefaultPricing,
   mergePricing,
+  PRICING_STALE_AFTER_DAYS,
+  resetPricingCache,
   resolveTokenRates,
+  summarizePricingCatalogAudit,
+  validatePricingCatalog,
 } from "./cost.js";
-export type { PricingCatalog, SwitchCostEstimate, TokenRates } from "./cost.js";
+export type {
+  PricingCatalog,
+  PricingCatalogAuditSummary,
+  PricingCatalogMetadata,
+  PricingFreshnessAssessment,
+  SwitchCostEstimate,
+  TokenRates,
+} from "./cost.js";
 export {
   defaultModelForTier,
   loadDefaultCatalog,

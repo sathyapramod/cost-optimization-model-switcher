@@ -2,6 +2,12 @@
   "version": "1",
   "unit": "usd_per_million_tokens",
   "note": "Heuristic list prices for estimates only — not invoice data. Update when vendors change pricing.",
+  "metadata": {
+    "currency": "USD",
+    "source": "Manually curated vendor list prices in this repo (Anthropic, OpenAI, Cursor public rate cards). Not fetched from a live pricing API.",
+    "retrievedAt": null,
+    "maintainerNote": "When verifying rates against vendor pages, set retrievedAt to the verification date (YYYY-MM-DD)."
+  },
   "models": {
     "claude-opus-4-6": { "input": 15, "output": 75 },
     "claude-sonnet-4-6": { "input": 3, "output": 15 },

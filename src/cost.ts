@@ -3,6 +3,20 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CapabilityTier, Provider, TaskClass } from "./types.js";
 
+const PROVIDERS: Provider[] = ["anthropic", "openai", "cursor"];
+const TIERS: CapabilityTier[] = ["premium", "balanced", "fast"];
+
+/** ponytail: fixed calendar-day threshold until automated vendor price checks exist. */
+export const PRICING_STALE_AFTER_DAYS = 90;
+
+export interface PricingCatalogMetadata {
+  currency: string;
+  source: string;
+  /** ISO date (YYYY-MM-DD) when rates were last verified; null if not recorded. */
+  retrievedAt?: string | null;
+  maintainerNote?: string;
+}
+
 export interface TokenRates {
   input: number;
   output: number;
@@ -12,6 +26,7 @@ export interface PricingCatalog {
   version: string;
   unit: "usd_per_million_tokens";
   note?: string;
+  metadata?: PricingCatalogMetadata;
   models: Record<string, TokenRates>;
   tierDefaults: Record<Provider, Record<CapabilityTier, TokenRates>>;
 }
@@ -46,6 +61,9 @@ export function mergePricing(
     version: override.version ?? base.version,
     unit: base.unit,
     note: override.note ?? base.note,
+    metadata: override.metadata
+      ? { ...base.metadata, ...override.metadata }
+      : base.metadata,
     models: { ...base.models, ...override.models },
     tierDefaults: {
       anthropic: { ...base.tierDefaults.anthropic, ...override.tierDefaults?.anthropic },
@@ -53,6 +71,180 @@ export function mergePricing(
       cursor: { ...base.tierDefaults.cursor, ...override.tierDefaults?.cursor },
     },
   };
+}
+
+export function resetPricingCache(): void {
+  cachedPricing = null;
+}
+
+function isValidRate(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n >= 0;
+}
+
+function validateRates(rates: unknown, label: string, errors: string[]): rates is TokenRates {
+  if (rates == null || typeof rates !== "object") {
+    errors.push(`${label}: expected { input, output }`);
+    return false;
+  }
+  const r = rates as Record<string, unknown>;
+  let ok = true;
+  if (!isValidRate(r.input)) {
+    errors.push(`${label}: invalid input rate`);
+    ok = false;
+  }
+  if (!isValidRate(r.output)) {
+    errors.push(`${label}: invalid output rate`);
+    ok = false;
+  }
+  return ok;
+}
+
+export function validatePricingCatalog(catalog: PricingCatalog): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!catalog.version?.trim()) errors.push("missing version");
+  if (catalog.unit !== "usd_per_million_tokens") {
+    errors.push(`unexpected unit: ${String(catalog.unit)}`);
+  }
+  if (!catalog.models || typeof catalog.models !== "object") {
+    errors.push("missing models map");
+  } else {
+    for (const [id, rates] of Object.entries(catalog.models)) {
+      validateRates(rates, `models.${id}`, errors);
+    }
+  }
+  for (const provider of PROVIDERS) {
+    const byTier = catalog.tierDefaults?.[provider];
+    if (!byTier) {
+      errors.push(`missing tierDefaults.${provider}`);
+      continue;
+    }
+    for (const tier of TIERS) {
+      validateRates(byTier[tier], `tierDefaults.${provider}.${tier}`, errors);
+    }
+  }
+  if (catalog.metadata) {
+    if (!catalog.metadata.currency?.trim()) errors.push("metadata.currency required when metadata present");
+    if (!catalog.metadata.source?.trim()) errors.push("metadata.source required when metadata present");
+    const at = catalog.metadata.retrievedAt;
+    if (at != null && at !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(at)) {
+      errors.push("metadata.retrievedAt must be YYYY-MM-DD or null");
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+export interface PricingFreshnessAssessment {
+  currency: string;
+  source: string;
+  updatedDisplay: string;
+  retrievedAt: string | null;
+  ageDays: number | null;
+  stale: boolean;
+  staleReason?: "missing_date" | "age";
+}
+
+export interface PricingCatalogAuditSummary {
+  currency: string;
+  source: string;
+  updatedDisplay: string;
+  retrievedAt: string | null;
+  stale: boolean;
+  staleWarning?: string;
+  unit: PricingCatalog["unit"];
+  version: string;
+}
+
+export function assessPricingFreshness(
+  catalog: PricingCatalog,
+  options?: { staleAfterDays?: number; now?: Date },
+): PricingFreshnessAssessment {
+  const staleAfterDays = options?.staleAfterDays ?? PRICING_STALE_AFTER_DAYS;
+  const now = options?.now ?? new Date();
+  const meta = catalog.metadata;
+  const currency = meta?.currency ?? "USD";
+  const source =
+    meta?.source ??
+    "Source not recorded in catalog metadata (see catalogs/pricing.json note).";
+  const retrievedAt =
+    meta?.retrievedAt != null && String(meta.retrievedAt).trim() !== ""
+      ? String(meta.retrievedAt).trim()
+      : null;
+
+  if (!retrievedAt) {
+    return {
+      currency,
+      source,
+      updatedDisplay: "not recorded",
+      retrievedAt: null,
+      ageDays: null,
+      stale: true,
+      staleReason: "missing_date",
+    };
+  }
+
+  const parsed = Date.parse(`${retrievedAt}T12:00:00Z`);
+  if (!Number.isFinite(parsed)) {
+    return {
+      currency,
+      source,
+      updatedDisplay: retrievedAt,
+      retrievedAt,
+      ageDays: null,
+      stale: true,
+      staleReason: "missing_date",
+    };
+  }
+  const ageDays = Math.floor((now.getTime() - parsed) / (24 * 60 * 60 * 1000));
+  const stale = ageDays > staleAfterDays;
+  return {
+    currency,
+    source,
+    updatedDisplay: retrievedAt,
+    retrievedAt,
+    ageDays,
+    stale,
+    staleReason: stale ? "age" : undefined,
+  };
+}
+
+export function summarizePricingCatalogAudit(catalog: PricingCatalog): PricingCatalogAuditSummary {
+  const freshness = assessPricingFreshness(catalog);
+  const summary: PricingCatalogAuditSummary = {
+    currency: freshness.currency,
+    source: freshness.source,
+    updatedDisplay: freshness.updatedDisplay,
+    retrievedAt: freshness.retrievedAt,
+    stale: freshness.stale,
+    unit: catalog.unit,
+    version: catalog.version,
+  };
+  if (freshness.stale) {
+    summary.staleWarning =
+      freshness.staleReason === "age"
+        ? `Pricing catalog may be stale (last verified ${freshness.updatedDisplay}; threshold ${PRICING_STALE_AFTER_DAYS} days).`
+        : "Pricing catalog freshness is unknown (retrievedAt not recorded).";
+  }
+  return summary;
+}
+
+export function formatPricingAuditText(catalog: PricingCatalog): string {
+  const f = assessPricingFreshness(catalog);
+  const lines = [
+    "Pricing data:",
+    `  Source: ${f.source}`,
+    `  Updated: ${f.updatedDisplay}`,
+    `  Currency: ${f.currency}`,
+  ];
+  if (f.stale) {
+    lines.push(
+      "",
+      "WARNING:",
+      f.staleReason === "age"
+        ? "Pricing catalog may be stale."
+        : "Pricing catalog freshness is unknown (no verification date recorded).",
+    );
+  }
+  return lines.join("\n");
 }
 
 function normalizeModelKey(modelId: string): string {

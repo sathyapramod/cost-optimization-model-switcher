@@ -5,6 +5,11 @@ import {
   formatDecisionTraceText,
   gateDecisionWithTrace,
 } from "./decision-trace.js";
+import {
+  formatPricingAuditText,
+  loadDefaultPricing,
+  summarizePricingCatalogAudit,
+} from "./cost.js";
 import { evaluateGate } from "./gate.js";
 import type { ContextProbe, ContextSource } from "./types.js";
 
@@ -123,14 +128,24 @@ function printContextWarnings(decision: ReturnType<typeof evaluateGate>) {
   }
 }
 
+const pricingCatalog = loadDefaultPricing();
+const pricingCatalogAudit = summarizePricingCatalogAudit(pricingCatalog);
+
 if (values.json) {
-  console.log(JSON.stringify(gateDecisionWithTrace(decision), null, 2));
+  console.log(
+    JSON.stringify(
+      { ...gateDecisionWithTrace(decision), pricingCatalogAudit },
+      null,
+      2,
+    ),
+  );
 } else {
   printContextWarnings(decision);
   console.log(formatDecisionTraceText(buildDecisionTrace(decision)));
   if (decision.suggestSwitch?.cost_pricing_note) {
     console.log(`\nnote: ${decision.suggestSwitch.cost_pricing_note}`);
   }
+  console.log(`\n${formatPricingAuditText(pricingCatalog)}`);
 }
 
 process.exit(decision.action === "suggest_switch" ? 2 : 0);
