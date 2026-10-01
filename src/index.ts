@@ -312,6 +312,18 @@ export {
   summarizeTask,
   taskClassFromDifficulty,
 } from "./classify.js";
+export {
+  buildDecisionTrace,
+  formatDecisionTraceText,
+  gateDecisionWithTrace,
+} from "./decision-trace.js";
+export type {
+  DecisionTrace,
+  DecisionTraceCost,
+  DecisionTraceModel,
+  DecisionTraceQualityEvidence,
+  TraceDecisionLabel,
+} from "./decision-trace.js";
 export { SUGGEST_MODEL_SWITCH_TOOL, handleSuggestModelSwitch } from "./tool-schema.js";
 export type {
   CapabilityTier,

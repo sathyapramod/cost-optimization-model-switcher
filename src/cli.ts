@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
+import {
+  buildDecisionTrace,
+  formatDecisionTraceText,
+  gateDecisionWithTrace,
+} from "./decision-trace.js";
 import { evaluateGate } from "./gate.js";
 import type { ContextProbe, ContextSource } from "./types.js";
 
@@ -119,23 +124,12 @@ function printContextWarnings(decision: ReturnType<typeof evaluateGate>) {
 }
 
 if (values.json) {
-  console.log(JSON.stringify(decision, null, 2));
+  console.log(JSON.stringify(gateDecisionWithTrace(decision), null, 2));
 } else {
   printContextWarnings(decision);
-  console.log(decision.reason);
-  if (decision.suggestSwitch) {
-    const sw = decision.suggestSwitch;
-    console.log(`recommended: ${sw.recommended_model_id} (${sw.confidence} confidence)`);
-    if (sw.estimated_cost_current_usd != null && sw.estimated_cost_recommended_usd != null) {
-      console.log(
-        `estimated turn cost: $${sw.estimated_cost_current_usd.toFixed(4)} → $${sw.estimated_cost_recommended_usd.toFixed(4)}` +
-          (sw.savings_percent != null && sw.estimated_savings_usd! > 0
-            ? ` (save ~${sw.savings_percent}%)`
-            : ""),
-      );
-    }
-    console.log(sw.rationale);
-    if (sw.cost_pricing_note) console.log(`note: ${sw.cost_pricing_note}`);
+  console.log(formatDecisionTraceText(buildDecisionTrace(decision)));
+  if (decision.suggestSwitch?.cost_pricing_note) {
+    console.log(`\nnote: ${decision.suggestSwitch.cost_pricing_note}`);
   }
 }
 
