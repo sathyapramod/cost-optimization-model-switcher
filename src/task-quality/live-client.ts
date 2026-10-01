@@ -56,6 +56,11 @@ export function assertLiveModelConfigured(target: LiveModelTarget): void {
   }
 }
 
+/** OpenAI reasoning models (o1/o3/o4) reject `max_tokens`; they want `max_completion_tokens`. */
+export function openaiCompletionLimitField(modelId: string): "max_tokens" | "max_completion_tokens" {
+  return /^o[0-9]/i.test(modelId.trim()) ? "max_completion_tokens" : "max_tokens";
+}
+
 export async function completeLiveModel(
   target: LiveModelTarget,
   userPrompt: string,
@@ -110,7 +115,7 @@ export async function completeLiveModel(
       },
       body: JSON.stringify({
         model: target.modelId,
-        max_tokens: maxTokens,
+        [openaiCompletionLimitField(target.modelId)]: maxTokens,
         messages: [{ role: "user", content: userPrompt }],
       }),
     });

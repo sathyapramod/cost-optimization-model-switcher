@@ -49,3 +49,12 @@ npm run evaluate:live -- --provider anthropic --model claude-haiku-4-5 --split h
 Outputs: `benchmarks/results/live-runs.json` (train-split rows merge into routing evidence), `live-latest.md`. Use `--dry-run` to inspect prompts without API calls.
 
 Legacy monolithic `task-quality/fixtures.json` is merged at load time for backward compatibility; prefer adding cases under domain folders.
+
+### Baseline vs router comparisons
+
+| Command | Data | Quality claim |
+|---------|------|----------------|
+| `npm run benchmark:router` | Fixture-based costs + fixture/synthetic quality (Priorities 1–2) | `evidence.taskQuality: "mixed"` — not live |
+| `npm run evaluate:live-compare` | Recorded live runs only, holdout split (Priority 3) | Empirical per (task, model) pair; reports `insufficient evidence` below `MIN_PAIRED_HOLDOUT_SAMPLES` (5) paired runs — never asserts the router preserves quality without data |
+
+See [docs/EVALUATION.md](../docs/EVALUATION.md#empirical-baseline-vs-router-holdout-live) for the full workflow.

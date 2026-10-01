@@ -6,6 +6,7 @@ import {
   completeLiveModel,
   liveCompletionRequestCount,
   LiveModelError,
+  openaiCompletionLimitField,
 } from "../task-quality/live-client.js";
 import { runLiveBenchmarkEvaluation } from "../task-quality/live-evaluation.js";
 
@@ -91,5 +92,18 @@ describe("API key separation (gate vs live evaluation)", () => {
       LiveModelError,
     );
     assert.equal(liveCompletionRequestCount, before);
+  });
+});
+
+describe("openaiCompletionLimitField", () => {
+  it("uses max_completion_tokens for o-series reasoning models", () => {
+    assert.equal(openaiCompletionLimitField("o3"), "max_completion_tokens");
+    assert.equal(openaiCompletionLimitField("o1-preview"), "max_completion_tokens");
+    assert.equal(openaiCompletionLimitField("o4-mini"), "max_completion_tokens");
+  });
+
+  it("keeps max_tokens for gpt models", () => {
+    assert.equal(openaiCompletionLimitField("gpt-4o"), "max_tokens");
+    assert.equal(openaiCompletionLimitField("gpt-4o-mini"), "max_tokens");
   });
 });

@@ -249,6 +249,19 @@ export type {
   TaskQualityOutcome,
 } from "./router-benchmark.js";
 export {
+  compareLiveHoldoutBaselineVsRouter,
+  formatLiveHoldoutComparisonMarkdown,
+  MIN_PAIRED_HOLDOUT_SAMPLES,
+} from "./live-holdout-benchmark.js";
+export type {
+  CompareLiveHoldoutOptions,
+  LiveHoldoutComparisonReport,
+  LiveHoldoutPairedComparison,
+  LiveHoldoutStrategyMetrics,
+  LiveHoldoutTaskComparison,
+  LiveRunSummary,
+} from "./live-holdout-benchmark.js";
+export {
   contextReductionPercent,
   estimateEffectiveInputTokens,
   formatScopedIngestHint,
