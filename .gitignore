@@ -5,3 +5,4 @@ dist/
 benchmarks/results/
 .env
 .env.*
+!.env.example

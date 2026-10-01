@@ -38,15 +38,13 @@ export {
 export type { ChatCompletionResult, LiveModelTarget } from "./live-client.js";
 export {
   DEFAULT_LIVE_RUNS_PATH,
-  formatLiveBenchmarkMarkdown,
   liveRunsForRoutingEvidence,
   loadLiveRuns,
-  runLiveBenchmarkEvaluation,
   saveLiveRuns,
+} from "./live-runs.js";
+export type { LiveBenchmarkRun, LiveRunsFile } from "./live-runs.js";
+export {
+  formatLiveBenchmarkMarkdown,
+  runLiveBenchmarkEvaluation,
 } from "./live-evaluation.js";
-export type {
-  LiveBenchmarkReport,
-  LiveBenchmarkRun,
-  LiveRunsFile,
-  RunLiveBenchmarkOptions,
-} from "./live-evaluation.js";
+export type { LiveBenchmarkReport, RunLiveBenchmarkOptions } from "./live-evaluation.js";

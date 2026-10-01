@@ -2,7 +2,8 @@
 /**
  * Live benchmark: call a real model API, evaluate with task-contract criteria, append to live-runs.json.
  *
- * Env: ANTHROPIC_API_KEY and/or OPENAI_API_KEY
+ * Env: only the key for --provider (ANTHROPIC_API_KEY or OPENAI_API_KEY).
+ * The cost gate does not use these keys.
  *
  * Examples:
  *   npm run evaluate:live -- --provider anthropic --model claude-haiku-4-5

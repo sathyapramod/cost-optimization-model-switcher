@@ -23,7 +23,9 @@ Explainable **model gate** for AI coding agents: classify the task, size the con
 - [CLI reference](#cli-reference)
 - [Integrate in your app](#integrate-in-your-app)
 - [How routing works](#how-routing-works)
+- [API keys](#api-keys)
 - [Evaluation & benchmarks](#evaluation--benchmarks)
+- [Developer / maintainer evaluation](#developer--maintainer-evaluation)
 - [Limitations](#limitations)
 - [FAQ](#faq)
 
@@ -36,7 +38,7 @@ Explainable **model gate** for AI coding agents: classify the task, size the con
 | Gate runs inside **Claude Code / Cursor** on every big PR, log, or Jira pull | [Install the skill](#install-the-skill) → [Use in the agent](#use-in-the-agent) | No |
 | **Script or CI** calls the gate before a model turn | [Try the CLI](#try-the-cli-60-seconds) → [CLI reference](#cli-reference) | Yes |
 | **Your product** calls `evaluateGate` or the proxy | [Integrate in your app](#integrate-in-your-app) | Yes |
-| **Measure** task-quality on fixtures or live APIs | [Evaluation & benchmarks](#evaluation--benchmarks) | Yes |
+| **Measure** task-quality on fixtures or live APIs (maintainers) | [Developer / maintainer evaluation](#developer--maintainer-evaluation) | Yes |
 
 **What ships in this repo**
 
@@ -54,12 +56,15 @@ Explainable **model gate** for AI coding agents: classify the task, size the con
 
 ## Try the CLI (60 seconds)
 
-**Requires:** Node 20+, then from repo root:
+**Requires:** Node 20+ only — **no Anthropic or OpenAI API keys** for the cost gate. From repo root:
 
 ```bash
 git clone https://github.com/sathyapramod/cost-optimization-model-switcher.git
 cd cost-optimization-model-switcher
 npm install && npm run build
+npm run gate -- --json --model claude-opus-4-6 \
+  --probe log_file:2000000 \
+  "Summarize this CI log"
 ```
 
 **Downgrade example** (Opus + ~2MB log + summarize → Haiku):
@@ -181,7 +186,14 @@ If the gate never runs, invoke the skill explicitly for that turn.
 
 ## CLI reference
 
-All commands from repo root after `npm run build`.
+All commands from repo root after `npm run build`. The **gate** is local and deterministic — it does not call Anthropic or OpenAI.
+
+| Command | Role |
+|---------|------|
+| `npm run gate` | **Primary** — task analysis, routing, cost estimate, model recommendation |
+| `npm run proxy` | HTTP wrapper around the same gate logic |
+
+**Developer / maintainer** (offline or live validation): `npm run evaluate:task-quality`, `npm run evaluate:held-out`, `npm run evaluate:live` — see [Developer / maintainer evaluation](#developer--maintainer-evaluation).
 
 | Scenario | Command |
 |----------|---------|
@@ -273,6 +285,21 @@ Details: [docs/ROUTING_ASSURANCE.md](docs/ROUTING_ASSURANCE.md) · [docs/ROUTING
 
 ---
 
+## API keys
+
+The **core cost gate** (`npm run gate`, `evaluateGate()`, `npm run proxy`) does **not** require Anthropic or OpenAI API keys. Routing, probes, catalogs, and cost estimates are computed locally.
+
+API keys are **only** required when you explicitly run **live evaluation** against a real provider:
+
+| Live evaluation | Environment variable |
+|-----------------|----------------------|
+| `--provider anthropic` | `ANTHROPIC_API_KEY` |
+| `--provider openai` | `OPENAI_API_KEY` |
+
+You only need the key for the provider you pass to `evaluate:live`. Copy [.env.example](.env.example) if you use a local `.env` for maintainer workflows (optional; the gate never reads it).
+
+---
+
 ## Evaluation & benchmarks
 
 Domain suites under `benchmarks/` (summarization, extraction, coding, code-review, debugging, architecture, security, analytical). Each case has success criteria and recorded outputs; **holdout** cases test generalization and are **excluded** from routing evidence.
@@ -282,33 +309,44 @@ Domain suites under `benchmarks/` (summarization, extraction, coding, code-revie
 | `npm test` | Unit tests + gate/adversarial regression |
 | `npm run evaluate` | Router regression (`fixtures.json`) + adversarial traps |
 | `npm run benchmark` | Gate fixtures only |
+
+Offline fixture evaluation (no API keys): `npm run evaluate:task-quality`, `npm run evaluate:held-out`.
+
+More: [benchmarks/README.md](benchmarks/README.md) · [docs/EVALUATION.md](docs/EVALUATION.md) · [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
+---
+
+## Developer / maintainer evaluation
+
+Validation tooling for routing evidence and benchmark quality — **not** required for normal gate usage.
+
+| Command | Purpose |
+|---------|---------|
 | `npm run evaluate:task-quality` | Criterion pass/fail on all fixture outputs → `benchmarks/results/task-quality-latest.*` |
 | `npm run evaluate:held-out` | Holdout split only → `held-out-latest.*` |
-| `npm run evaluate:live` | Call Anthropic/OpenAI APIs, same evaluators → `live-runs.json` |
+| `npm run evaluate:live` | Call a real provider API, same evaluators → `live-runs.json` |
 
-**Offline fixture evaluation** (no API keys):
+**Offline:**
 
 ```bash
 npm run evaluate:task-quality
 npm run evaluate:held-out
 ```
 
-**Live empirical runs** (requires `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`):
+**Live** (provider key required only for the `--provider` you choose):
 
 ```bash
 # Default: holdout slice (does not merge into routing evidence)
 npm run evaluate:live -- --provider anthropic --model claude-haiku-4-5 --split holdout
 
 # Train split: appends to live-runs.json and merges into Evidence Index v2 for routing
-npm run evaluate:live -- --split train --domain summarization,coding
+npm run evaluate:live -- --provider anthropic --split train --domain summarization,coding
 
-# Preview prompts without API cost
+# Preview prompts without API cost (no key required)
 npm run evaluate:live -- --dry-run --split holdout
 ```
 
 Prompt source material: `benchmarks/assets/<caseId>.txt` when present. Compare holdout pass rates to training fixtures; a large gap suggests overfitting recorded outputs.
-
-More: [benchmarks/README.md](benchmarks/README.md) · [docs/EVALUATION.md](docs/EVALUATION.md) · [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 ---
 

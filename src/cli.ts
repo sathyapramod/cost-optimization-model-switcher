@@ -56,13 +56,25 @@ const { values, positionals } = parseArgs({
 });
 
 if (values.help) {
-  console.log(`Usage: cost-gate [options] "user message"
+  console.log(`cost-gate — analyze a task and recommend a cost-effective model (no API keys required)
+
+Usage: cost-gate [options] "user message"
+
+Commands (from repo root):
+  npm run gate              Primary: local routing, cost estimates, model recommendation
+
+Developer / maintainer commands (npm scripts):
+  npm run evaluate:live     Live model evaluation against a real provider (API key required)
+  npm run evaluate:task-quality   Offline criterion checks on fixture outputs
+  npm run evaluate:held-out       Holdout split only (offline)
 
 Options:
   --model <id>         Current model (default: claude-opus-4-6)
+  --provider <id>      anthropic | openai | cursor (optional)
   --probe <spec>       Repeatable context probe (see README)
   --opt-out            User disabled model switching
   --chose-opus         User explicitly chose Opus
+  --chose-cheap        User chose a cheaper model tier
   --auto-switch        Host auto-switch enabled
   --json               JSON output
   -h, --help           Show help

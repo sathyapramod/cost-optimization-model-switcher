@@ -22,6 +22,16 @@ export class LiveModelError extends Error {
   }
 }
 
+/** Incremented on each `completeLiveModel` call (tests assert the gate path never triggers live APIs). */
+export let liveCompletionRequestCount = 0;
+
+export function envVarHintForLiveProvider(provider: Provider): string {
+  if (provider === "anthropic") return "ANTHROPIC_API_KEY";
+  if (provider === "openai") return "OPENAI_API_KEY";
+  if (provider === "cursor") return "CURSOR_API_KEY or OPENAI_API_KEY";
+  return "provider API key";
+}
+
 function apiKeyForProvider(provider: Provider): string | undefined {
   if (provider === "anthropic") return process.env.ANTHROPIC_API_KEY;
   if (provider === "openai") return process.env.OPENAI_API_KEY;
@@ -31,13 +41,18 @@ function apiKeyForProvider(provider: Provider): string | undefined {
   return undefined;
 }
 
+function missingLiveKeyMessage(provider: Provider): string {
+  const envHint = envVarHintForLiveProvider(provider);
+  return (
+    `${envHint} is required for live evaluation (npm run evaluate:live) with provider "${provider}". ` +
+    "The cost gate does not use provider API keys."
+  );
+}
+
 export function assertLiveModelConfigured(target: LiveModelTarget): void {
   const key = apiKeyForProvider(target.provider);
   if (!key) {
-    throw new LiveModelError(
-      `Missing API key for provider "${target.provider}" (set ANTHROPIC_API_KEY or OPENAI_API_KEY).`,
-      "missing_api_key",
-    );
+    throw new LiveModelError(missingLiveKeyMessage(target.provider), "missing_api_key");
   }
 }
 
@@ -48,11 +63,9 @@ export async function completeLiveModel(
 ): Promise<ChatCompletionResult> {
   const apiKey = apiKeyForProvider(target.provider);
   if (!apiKey) {
-    throw new LiveModelError(
-      `Missing API key for provider "${target.provider}".`,
-      "missing_api_key",
-    );
+    throw new LiveModelError(missingLiveKeyMessage(target.provider), "missing_api_key");
   }
+  liveCompletionRequestCount++;
   const maxTokens = options?.maxTokens ?? 4096;
   const started = Date.now();
 

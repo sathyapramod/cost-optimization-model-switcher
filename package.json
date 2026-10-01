@@ -28,6 +28,7 @@
     "build": "tsc",
     "test": "npm run build && NODE_ENV=test node --test dist/test/*.test.js",
     "gate": "node dist/cli.js",
+    "help": "node dist/cli.js --help",
     "proxy": "node dist/proxy.js",
     "validate-skill": "node scripts/validate-skill.mjs",
     "benchmark": "npm run build && node scripts/run-benchmarks.mjs",
