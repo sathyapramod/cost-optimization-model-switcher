@@ -1,4 +1,9 @@
 import { tierDisplayName } from "./catalog.js";
+import {
+  deriveAbstainReason,
+  deriveEvidenceDisposition,
+  type EvidenceDisposition,
+} from "./evidence-disposition.js";
 import { classifyRoutingDecision } from "./router-benchmark.js";
 import type { CapabilityTier, GateDecision, Provider } from "./types.js";
 
@@ -18,6 +23,7 @@ export interface DecisionTraceModel {
 
 export interface DecisionTraceQualityEvidence {
   status: "available" | "insufficient" | "not_applicable" | "unknown";
+  disposition: EvidenceDisposition;
   guaranteeLevel?: string;
   effectiveBasis?: string;
   summary: string;
@@ -51,6 +57,8 @@ export interface DecisionTrace {
   qualityEvidence: DecisionTraceQualityEvidence;
   cost?: DecisionTraceCost;
   why: string[];
+  evidenceDisposition: EvidenceDisposition;
+  abstainReason?: string;
   /** Mirrors gate `reason` for auditability. */
   gateReason: string;
   routingOutcome: ReturnType<typeof classifyRoutingDecision>;
@@ -114,30 +122,38 @@ function requiredCapabilityLabels(decision: GateDecision): string[] {
 }
 
 function qualityEvidenceBlock(decision: GateDecision): DecisionTraceQualityEvidence {
+  const disposition = deriveEvidenceDisposition(decision);
   const qa = decision.routing?.qualityAssurance;
   if (!qa) {
-    return { status: "not_applicable", summary: "not evaluated (no routing layer on this path)" };
+    return {
+      status: "not_applicable",
+      disposition,
+      summary: "not evaluated (no routing layer on this path)",
+    };
   }
   const level = qa.guarantee.level;
   const basis = decision.routing?.effectiveRecommendation?.basis;
-  if (level === "abstain") {
+  if (level === "abstain" || disposition === "insufficient") {
     return {
       status: "insufficient",
+      disposition: "insufficient",
       guaranteeLevel: level,
       effectiveBasis: basis,
       summary: "insufficient — safe downgrade/upgrade not established",
     };
   }
-  if (level === "probabilistic") {
+  if (level === "probabilistic" && disposition === "sufficient") {
     return {
       status: "available",
+      disposition: "sufficient",
       guaranteeLevel: level,
       effectiveBasis: basis,
-      summary: "available — configured quality floor satisfied (probabilistic, not deterministic)",
+      summary: "sufficient — configured quality floor satisfied (probabilistic, not deterministic)",
     };
   }
   return {
     status: "unknown",
+    disposition,
     guaranteeLevel: level,
     effectiveBasis: basis,
     summary: qa.guarantee.statement.slice(0, 120),
@@ -165,6 +181,7 @@ function buildWhy(decision: GateDecision, label: TraceDecisionLabel): string[] {
   }
   if (label === "SKIP_UNKNOWN_MODEL") {
     bullets.push("Current model is not in the catalog — gate skips switching");
+    bullets.push("Unknown identity is not treated as cheap or safe to downgrade");
     return bullets;
   }
 
@@ -180,9 +197,9 @@ function buildWhy(decision: GateDecision, label: TraceDecisionLabel): string[] {
       );
     }
     const q = qualityEvidenceBlock(decision);
-    if (q.status === "available") {
+    if (q.disposition === "sufficient") {
       bullets.push("Quality evidence satisfies configured floor for this success spec");
-    } else if (q.status === "insufficient") {
+    } else if (q.disposition === "insufficient") {
       bullets.push("Quality assurance did not certify the switch — see ABSTAIN path");
     }
     if (label === "DOWNGRADE") {
@@ -197,18 +214,18 @@ function buildWhy(decision: GateDecision, label: TraceDecisionLabel): string[] {
   }
 
   if (label === "ABSTAIN") {
+    bullets.push(deriveAbstainReason(decision));
     if (decision.routing?.qualityAssurance?.guarantee.level === "abstain") {
-      bullets.push("Insufficient evidence to safely change model");
+      bullets.push("Quality assurance abstained — preserve current model");
     }
-    if (rc?.noOpReason) bullets.push(rc.noOpReason);
+    if (rc?.noOpReason && !bullets.includes(rc.noOpReason)) bullets.push(rc.noOpReason);
     else if (decision.reason.includes("no-op")) {
       const inner = decision.reason.match(/no-op \(([^)]+)\)/)?.[1];
-      if (inner) bullets.push(inner);
+      if (inner && !bullets.some((b) => b.includes(inner))) bullets.push(inner);
     }
     if (rc?.clarification.needed && rc.clarification.summary) {
-      bullets.push(rc.clarification.summary);
+      if (!bullets.includes(rc.clarification.summary)) bullets.push(rc.clarification.summary);
     }
-    if (bullets.length === 0) bullets.push("Insufficient evidence to safely downgrade");
     return bullets;
   }
 
@@ -288,6 +305,7 @@ export function buildDecisionTrace(decision: GateDecision): DecisionTrace {
 
   const label = resolveLabel(decision);
   const routingOutcome = classifyRoutingDecision(decision);
+  const abstainReason = label === "ABSTAIN" ? deriveAbstainReason(decision) : undefined;
 
   return {
     label,
@@ -309,6 +327,8 @@ export function buildDecisionTrace(decision: GateDecision): DecisionTrace {
     qualityEvidence: qualityEvidenceBlock(decision),
     cost: costBlock(decision),
     why: buildWhy(decision, label),
+    evidenceDisposition: deriveEvidenceDisposition(decision),
+    abstainReason,
     gateReason: decision.reason,
     routingOutcome,
   };
@@ -334,14 +354,19 @@ export function formatDecisionTraceText(trace: DecisionTrace): string {
       : ["  (none inferred)"]),
     "",
     "Quality evidence:",
+    `  disposition: ${trace.qualityEvidence.disposition}`,
     `  ${trace.qualityEvidence.status}`,
   ];
-  if (trace.qualityEvidence.status === "available") {
+  if (trace.qualityEvidence.disposition === "sufficient") {
     lines.push("  quality floor: satisfied");
-  } else if (trace.qualityEvidence.status === "insufficient") {
+  } else if (trace.qualityEvidence.disposition === "insufficient") {
     lines.push("  quality floor: not satisfied");
   }
   lines.push(`  (${trace.qualityEvidence.summary})`, "", "Decision:", `  ${trace.headline}`);
+
+  if (trace.label === "ABSTAIN" && trace.abstainReason) {
+    lines.push("", "Reason:", `  ${trace.abstainReason}`);
+  }
 
   if (trace.cost) {
     lines.push(

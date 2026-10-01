@@ -326,6 +326,14 @@ export {
   taskClassFromDifficulty,
 } from "./classify.js";
 export {
+  ABSTAIN_QUALITY_FLOOR_REASON,
+  deriveAbstainReason,
+  deriveEvidenceDisposition,
+  isUnsafeDowngrade,
+  mapEvidenceStatusToDisposition,
+} from "./evidence-disposition.js";
+export type { EvidenceDisposition } from "./evidence-disposition.js";
+export {
   buildDecisionTrace,
   formatDecisionTraceText,
   gateDecisionWithTrace,

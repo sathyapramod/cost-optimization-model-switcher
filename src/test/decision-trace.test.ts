@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { ABSTAIN_QUALITY_FLOOR_REASON } from "../evidence-disposition.js";
 import {
   buildDecisionTrace,
   formatDecisionTraceText,
@@ -103,6 +104,8 @@ describe("decision trace", () => {
     assert.equal(trace.label, "ABSTAIN");
     assert.equal(trace.headline, "ABSTAIN");
     assert.equal(trace.qualityEvidence.status, "insufficient");
+    assert.equal(trace.qualityEvidence.disposition, "insufficient");
+    assert.equal(trace.abstainReason, ABSTAIN_QUALITY_FLOOR_REASON);
     assert.ok(trace.why.length > 0);
 
     const text = formatDecisionTraceText(trace);
