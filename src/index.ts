@@ -170,6 +170,7 @@ export type {
   SuccessSpecId,
 } from "./success-criteria.js";
 export {
+  ADVERSARIAL_TRAPS,
   assertAdversarialSuite,
   formatAdversarialMarkdown,
   loadAdversarialSuite,
@@ -182,6 +183,7 @@ export type {
   AdversarialKind,
   AdversarialReport,
   AdversarialSuite,
+  AdversarialTrap,
 } from "./adversarial.js";
 export {
   assertEvaluation,

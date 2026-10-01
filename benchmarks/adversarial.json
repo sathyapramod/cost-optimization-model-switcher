@@ -1,30 +1,38 @@
 {
-  "version": "1",
+  "version": "2",
   "provider": "anthropic",
-  "note": "False-positive = must NOT suggest_switch when switch would be wrong/noisy. False-negative = MUST suggest_switch.",
+  "note": "False-positive = must NOT suggest_switch when a switch would be wrong/noisy. False-negative = MUST suggest_switch. Each case has trap + reason so a routing bug becomes a permanent regression fixture. Do not retune routing to pass these — update the fixture only when the policy change is intentional.",
   "cases": [
     {
       "id": "fp-opus-small-straightforward",
       "kind": "false_positive",
+      "trap": "boundary",
       "description": "Premium + small context: do not downgrade",
+      "reason": "Below the medium-context band the gate skips cost switching even for straightforward work.",
       "currentModel": "claude-opus-4-6",
       "userMessage": "Summarize this short paste",
       "probes": [{ "source": "paste", "bytes": 4000 }],
-      "expect": { "action": "proceed" }
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["small context"]
     },
     {
       "id": "fp-opus-complex-architecture",
       "kind": "false_positive",
+      "trap": "false_downgrade",
       "description": "Premium + complex migration: stay",
+      "reason": "Looks like a bulk ingest but the task is architecture/migration — staying premium is the safe outcome.",
       "currentModel": "claude-opus-4-6",
       "userMessage": "Design auth migration from this database dump",
       "probes": [{ "source": "database_dump", "bytes": 2000000 }],
-      "expect": { "action": "proceed" }
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["stayed-premium"]
     },
     {
       "id": "fp-sonnet-small-debug",
       "kind": "false_positive",
+      "trap": "false_downgrade",
       "description": "Sonnet + small complex fix: within tier",
+      "reason": "A short race-condition debug is complex but still within balanced-tier capacity; do not upgrade just because it is hard.",
       "currentModel": "claude-sonnet-4-6",
       "userMessage": "Fix the race condition in this 100-line concurrency module",
       "probes": [{ "source": "paste", "bytes": 8000 }],
@@ -33,17 +41,22 @@
     {
       "id": "fp-user-opt-out",
       "kind": "false_positive",
+      "trap": "false_upgrade",
       "description": "User opted out: never switch",
+      "reason": "Explicit opt-out is a hard skip regardless of savings.",
       "currentModel": "claude-opus-4-6",
       "userMessage": "Summarize this 2MB CI log",
       "probes": [{ "source": "log_file", "bytes": 2000000 }],
       "userOptedOut": true,
-      "expect": { "action": "proceed" }
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["opted out"]
     },
     {
       "id": "fp-sonnet-straightforward-large",
       "kind": "false_positive",
+      "trap": "false_upgrade",
       "description": "Balanced tier + straightforward bulk: already cheap enough",
+      "reason": "Do not upgrade a cheap-enough model on a clearly simple large-log summarize.",
       "currentModel": "claude-sonnet-4-6",
       "userMessage": "Summarize this 2MB CI log",
       "probes": [{ "source": "log_file", "bytes": 2000000 }],
@@ -52,7 +65,9 @@
     {
       "id": "fp-opus-mixed-intent-complex",
       "kind": "false_positive",
+      "trap": "false_downgrade",
       "description": "Mixed signals on premium: stay (complex)",
+      "reason": "Review+implement mixed intent is classified complex; premium must not downgrade.",
       "currentModel": "claude-opus-4-6",
       "userMessage": "Review PR diff and implement the fix for the race",
       "probes": [
@@ -63,7 +78,9 @@
     {
       "id": "fn-opus-large-log",
       "kind": "false_negative",
+      "trap": "false_upgrade",
       "description": "Premium + large log summarize: downgrade to fast",
+      "reason": "Clearly simple bulk summarization with quality evidence — staying premium is a false upgrade.",
       "currentModel": "claude-opus-4-6",
       "userMessage": "Summarize this 2MB CI log and list errors only",
       "probes": [{ "source": "log_file", "bytes": 2000000 }],
@@ -72,7 +89,9 @@
     {
       "id": "fn-haiku-implement",
       "kind": "false_negative",
+      "trap": "upgrade",
       "description": "Haiku + implement: upgrade to balanced",
+      "reason": "Code generation from a cheap model needs at least balanced capability.",
       "currentModel": "claude-haiku-4-5",
       "userMessage": "Implement a new Backstage plugin for Git repo registration with tests",
       "expect": { "action": "suggest_switch", "recommendedTier": "balanced" }
@@ -80,7 +99,9 @@
     {
       "id": "fn-haiku-migration",
       "kind": "false_negative",
+      "trap": "upgrade",
       "description": "Haiku + deep migration: upgrade to premium",
+      "reason": "Architecture/migration exceeds fast-tier capability.",
       "currentModel": "claude-haiku-4-5",
       "userMessage": "Design auth migration from this database dump",
       "probes": [{ "source": "database_dump", "bytes": 500000 }],
@@ -89,7 +110,9 @@
     {
       "id": "fn-sonnet-security",
       "kind": "false_negative",
+      "trap": "upgrade",
       "description": "Sonnet + security audit: upgrade to premium",
+      "reason": "Security/exploit-path work is above balanced-tier floors.",
       "currentModel": "claude-sonnet-4-6",
       "userMessage": "Run a security audit on this API surface and explain exploit paths",
       "probes": [
@@ -100,7 +123,9 @@
     {
       "id": "fn-opus-pr-review",
       "kind": "false_negative",
+      "trap": "false_upgrade",
       "description": "Premium + PR bug list: downgrade to balanced",
+      "reason": "Straightforward PR review should not stay on premium when evidence allows balanced.",
       "currentModel": "claude-opus-4-6",
       "userMessage": "Review PR #482 diff and list potential bugs",
       "probes": [
@@ -111,11 +136,159 @@
     {
       "id": "fn-haiku-refactor",
       "kind": "false_negative",
+      "trap": "upgrade",
       "description": "Haiku + refactor: upgrade to balanced",
+      "reason": "Refactor-with-tests exceeds fast-tier coding capacity.",
       "currentModel": "claude-haiku-4-5",
       "userMessage": "Refactor the gate module for clarity and add tests",
       "probes": [{ "source": "paste", "bytes": 40000 }],
       "expect": { "action": "suggest_switch", "recommendedTier": "balanced" }
+    },
+    {
+      "id": "fp-opus-tldr-architecture",
+      "kind": "false_positive",
+      "trap": "false_downgrade",
+      "description": "Looks like a TL;DR but is actually a migration design",
+      "reason": "Surface wording is summary-like; task class is still complex architecture — do not downgrade.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "TL;DR design auth migration from this database dump",
+      "probes": [{ "source": "database_dump", "bytes": 2000000 }],
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["stayed-premium"]
+    },
+    {
+      "id": "fp-opus-small-race-debug",
+      "kind": "false_positive",
+      "trap": "false_downgrade",
+      "description": "Small concurrency debug on premium stays",
+      "reason": "Short prompt + small paste; the work is still a race/concurrency proof and must stay premium.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Fix the race condition in this 100-line concurrency module",
+      "probes": [{ "source": "paste", "bytes": 8000 }],
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["stayed-premium"]
+    },
+    {
+      "id": "fn-opus-tiny-prompt-huge-log",
+      "kind": "false_negative",
+      "trap": "context_trap",
+      "description": "Tiny prompt + huge log: context size still drives a downgrade",
+      "reason": "A one-word summarize with a 3MB log is still straightforward bulk work; huge context must not force premium.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Summarize",
+      "probes": [{ "source": "log_file", "bytes": 3000000 }],
+      "expect": { "action": "suggest_switch", "recommendedTier": "fast" }
+    },
+    {
+      "id": "fp-opus-tiny-prompt-huge-architecture",
+      "kind": "false_positive",
+      "trap": "context_trap",
+      "description": "Tiny architecture prompt + huge dump stays premium",
+      "reason": "Huge context alone does not justify a downgrade when the task is architecture.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Design a multi-region failover architecture for this dump",
+      "probes": [{ "source": "database_dump", "bytes": 2000000 }],
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["stayed-premium"]
+    },
+    {
+      "id": "fn-opus-huge-log-trivial-summarize",
+      "kind": "false_negative",
+      "trap": "complexity_trap",
+      "description": "Huge context + trivial summarize does not stay premium",
+      "reason": "Large context ≠ premium. Straightforward error-list summarization with evidence should downgrade.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Summarize this 2MB CI log and list errors only",
+      "probes": [{ "source": "log_file", "bytes": 4000000 }],
+      "expect": { "action": "suggest_switch", "recommendedTier": "fast" }
+    },
+    {
+      "id": "fp-opus-analyze-this-underspecified",
+      "kind": "false_positive",
+      "trap": "underspecified",
+      "description": "Underspecified analyze on premium with large log: abstain",
+      "reason": "Insufficient information — cannot derive a quality floor; preserve current model (no aggressive downgrade).",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Analyze this.",
+      "probes": [{ "source": "log_file", "bytes": 2000000 }],
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["no-op"],
+      "expectQualityGuarantee": "abstain",
+      "expectEffectiveBasis": "abstain_preserve_current"
+    },
+    {
+      "id": "fp-unknown-model-no-switch",
+      "kind": "false_positive",
+      "trap": "unknown_model",
+      "description": "Unrecognized current model: skip switching",
+      "reason": "Unknown catalog identity is a safe no-op; do not invent a recommended model.",
+      "currentModel": "totally-unknown-model-xyz",
+      "userMessage": "Summarize this 2MB CI log and list errors only",
+      "probes": [{ "source": "log_file", "bytes": 2000000 }],
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["unknown model"]
+    },
+    {
+      "id": "fp-opus-json-extract-missing-evidence",
+      "kind": "false_positive",
+      "trap": "missing_quality_evidence",
+      "description": "Straightforward extract with no fixture evidence: do not claim a safe downgrade",
+      "reason": "Quality-constrained policy requires evidence; missing evidence → abstain, keep premium.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Parse this JSON export into a table of field names only",
+      "probes": [{ "source": "json_export", "bytes": 200000 }],
+      "expect": { "action": "proceed" },
+      "expectQualityGuarantee": "abstain",
+      "expectEffectiveBasis": "abstain_preserve_current"
+    },
+    {
+      "id": "fp-opus-count-errors-quality-floor",
+      "kind": "false_positive",
+      "trap": "quality_floor",
+      "description": "Trivial-looking count over a huge log: quality floor not met → no downgrade",
+      "reason": "Capability routing might pick cheap, but no model meets the quality floor for this spec — do not downgrade.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Count how many lines mention ERROR in this dump",
+      "probes": [{ "source": "log_file", "bytes": 4000000 }],
+      "expect": { "action": "proceed" },
+      "expectQualityGuarantee": "abstain",
+      "expectEffectiveBasis": "abstain_preserve_current"
+    },
+    {
+      "id": "fn-haiku-security-audit",
+      "kind": "false_negative",
+      "trap": "upgrade",
+      "description": "Haiku + security audit: upgrade to premium",
+      "reason": "Starting cheap on exploit-path work must upgrade; capability floors require premium.",
+      "currentModel": "claude-haiku-4-5",
+      "userMessage": "Run a security audit on this API surface and explain exploit paths",
+      "probes": [
+        { "source": "github_pr", "additions": 800, "deletions": 200, "changedFiles": 12 }
+      ],
+      "expect": { "action": "suggest_switch", "recommendedTier": "premium" }
+    },
+    {
+      "id": "fp-opus-summarize-just-below-medium",
+      "kind": "false_positive",
+      "trap": "boundary",
+      "description": "Straightforward summarize just under the 30k-token medium band: stay",
+      "reason": "Context-band threshold: 29,750 tokens is still small — gate skips downgrade.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Summarize this paste",
+      "probes": [{ "source": "paste", "bytes": 119000 }],
+      "expect": { "action": "proceed" },
+      "expectReasonIncludes": ["small context"]
+    },
+    {
+      "id": "fn-opus-summarize-just-above-small",
+      "kind": "false_negative",
+      "trap": "boundary",
+      "description": "Straightforward summarize just over the 30k-token medium band: downgrade",
+      "reason": "Crossing BAND_SMALL_MAX (30k tokens) with a simple summarize and quality evidence should switch down.",
+      "currentModel": "claude-opus-4-6",
+      "userMessage": "Summarize this paste and list errors only",
+      "probes": [{ "source": "paste", "bytes": 121000 }],
+      "expect": { "action": "suggest_switch", "recommendedTier": "fast" }
     }
   ]
 }

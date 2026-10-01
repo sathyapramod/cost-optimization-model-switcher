@@ -119,7 +119,27 @@ Each result includes `qualityScore`, `passed`, `criterionResults`, `latencyMs`, 
 | `false_positive` | Router must **not** `suggest_switch` | Unwanted switch prompt |
 | `false_negative` | Router **must** `suggest_switch` with expected tier | Missed savings / wrong tier |
 
-Add cases to `benchmarks/adversarial.json` when you fix a routing bug or discover a new edge case.
+Add cases to `benchmarks/adversarial.json` when you fix a routing bug or discover a new edge case. Every case must include:
+
+- `userMessage` / `probes` / `currentModel` (input)
+- `expect.action` (+ `recommendedTier` when switching)
+- `reason` (why this is the safe outcome)
+- `trap` (one of the Priority 4 classes below)
+
+| Trap | What it checks |
+|------|----------------|
+| `false_downgrade` | Looks cheaper-safe but needs premium/high reasoning — stay |
+| `false_upgrade` | Clearly simple — must downgrade (or not upgrade) when evidence allows |
+| `context_trap` | Tiny prompt vs huge context — size can drive a switch, but architecture stays premium |
+| `complexity_trap` | Huge context + trivial op — large ≠ premium |
+| `underspecified` | Abstain / preserve current |
+| `unknown_model` | Skip switch; do not invent a recommendation |
+| `missing_quality_evidence` | Do not claim a quality-safe downgrade |
+| `quality_floor` | Recommended cheap model fails the floor — do not downgrade |
+| `upgrade` | Cheap start + high capability need — upgrade |
+| `boundary` | Token-band / skip thresholds |
+
+Optional `expectReasonIncludes`, `expectQualityGuarantee`, `expectEffectiveBasis` pin the gate reason and quality-assurance layer.
 
 ## API
 

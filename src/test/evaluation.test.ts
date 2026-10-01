@@ -7,7 +7,7 @@ describe("evaluation framework", () => {
   it("adversarial suite passes all cases", () => {
     const report = runAdversarialSuite();
     assert.equal(report.summary.failed, 0);
-    assert.ok(report.summary.caseCount >= 10);
+    assert.ok(report.summary.caseCount >= 20);
     assertAdversarialSuite(report);
   });
 
